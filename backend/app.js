@@ -18,8 +18,20 @@ const path = require('path');
 // require('./services/scheduler');
 // require('./services/messageService');
 
+const activityRoute = require('./routes/activityRoute');
+const scheduleRoute = require('./routes/activityScheduleRoute');
+const bookingRoute = require('./routes/activityBookingRoute');
+const participantRoute = require('./routes/activityParticipantRoute');
+const reviewRoute = require('./routes/activityReviewRoute');
+const analyticsRoute = require('./routes/activityAnalyticsRoute');
 
 
+app.use('/activity', activityRoute);
+app.use('/activity/schedules', scheduleRoute);
+app.use('/activity/bookings', bookingRoute);
+app.use('/activity/participants', participantRoute);
+app.use('/activity/reviews', reviewRoute);
+app.use('/activity/analytics', analyticsRoute);
 
 const app = express();
 
