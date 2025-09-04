@@ -15,6 +15,12 @@ const sequelize = require('./models/index').sequelize;
 const { register } = require('./utils/metrics');
 const path = require('path');
 
+const arrangementsRoutes = require('./routes/arrangements.routes');
+const departuresRoutes = require('./routes/departures.routes');
+const itinerariesRoutes = require('./routes/itineraries.routes');
+const activitiesRoutes = require('./routes/activities.routes');
+
+
 // require('./services/scheduler');
 // require('./services/messageService');
 
@@ -35,6 +41,10 @@ app.get('/test', (req, res) => {
 });
 
 app.use('/api/user', userRoute);
+app.use('/api/arrangements', arrangementsRoutes);
+app.use('/api/departures', departuresRoutes);
+app.use('/api/itineraries', itinerariesRoutes);
+app.use('/api/activities', activitiesRoutes);
 // app.use('/api/post', postRoute);
 // app.use('/api/location', locationRoute);
 // app.use('/api/image', imageRoute);
