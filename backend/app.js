@@ -26,12 +26,7 @@ const reviewRoute = require('./routes/activityReviewRoute');
 const analyticsRoute = require('./routes/activityAnalyticsRoute');
 
 
-app.use('/activity', activityRoute);
-app.use('/activity/schedules', scheduleRoute);
-app.use('/activity/bookings', bookingRoute);
-app.use('/activity/participants', participantRoute);
-app.use('/activity/reviews', reviewRoute);
-app.use('/activity/analytics', analyticsRoute);
+
 
 const app = express();
 
@@ -46,6 +41,13 @@ app.get('/test', (req, res) => {
 	res.send('Hello World!');
 });
 
+
+app.use('/activity', activityRoute);
+app.use('/activity/schedules', scheduleRoute);
+app.use('/activity/bookings', bookingRoute);
+app.use('/activity/participants', participantRoute);
+app.use('/activity/reviews', reviewRoute);
+app.use('/activity/analytics', analyticsRoute);
 app.use('/api/user', userRoute);
 // app.use('/api/post', postRoute);
 // app.use('/api/location', locationRoute);

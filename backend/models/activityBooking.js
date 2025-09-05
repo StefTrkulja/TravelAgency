@@ -6,7 +6,7 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       ActivityBooking.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
       ActivityBooking.belongsTo(models.ActivitySchedule, { foreignKey: 'activity_schedule_id', as: 'activitySchedule' });
-      ActivityBooking.belongsTo(models.ArrangementBooking, { foreignKey: 'arrangement_booking_id', as: 'arrangementBooking' });
+      ActivityBooking.belongsTo(models.Booking, { foreignKey: 'arrangement_booking_id', as: 'arrangementBooking' });
     }
   }
 
