@@ -1,92 +1,62 @@
-const { ActivityAnalytics, User } = require('../models');
+const { ActivityAnalytics, ActivityBooking, ActivitySchedule, ActivityReview } = require('../models');
+const { Op } = require('sequelize');
 const { Result, StatusEnum } = require('../utils/result');
 
 class ActivityAnalyticsService {
-  async createAnalytics(payload) {
+  async generateAnalytics(activityId, fromDate, toDate, username) {
     try {
-      // optional: check if user exists
-      if (payload.user_id) {
-        const user = await User.findByPk(payload.user_id);
-        if (!user) {
-          return new Result(StatusEnum.FAIL, 400, null, { message: 'Invalid user_id' });
+      // Get bookings for this activity in timeframe
+      const bookings = await ActivityBooking.findAll({
+        include: [{ model: ActivitySchedule, as: 'activitySchedule', where: { activity_id: activityId } }],
+        where: {
+          bookingDate: { [Op.between]: [fromDate, toDate] }
         }
-      }
+      });
 
-      const analytics = await ActivityAnalytics.create(payload);
+      const numberOfParticipants = bookings.reduce((sum, b) => sum + (b.numberOfParticipants || 0), 0);
+      const fullIncome = bookings.reduce((sum, b) => sum + parseFloat(b.totalPrice || 0), 0);
+      const cancelled = bookings.filter(b => b.isCancelled).length;
+      const cancellationRate = bookings.length > 0 ? cancelled / bookings.length : 0;
+
+      // Reviews
+      const reviews = await ActivityReview.findAll({
+        where: { activity_booking_id: bookings.map(b => b.id) }
+      });
+      const numberOfReviews = reviews.length;
+      const avg = (key) => reviews.length ? reviews.reduce((s, r) => s + (r[key] || 0), 0) / reviews.length : null;
+
+      const analytics = await ActivityAnalytics.create({
+        activity_id: activityId,
+        userUsername: username,
+        numberOfParticipants,
+        fullIncome,
+        profits: fullIncome * 0.2, // mock: 20% profit
+        numberOfReviews,
+        averageOverallRating: avg('overallRating'),
+        averageGuideRating: avg('guideRating'),
+        averageSafetyRating: avg('safetyRating'),
+        revisitingRate: reviews.length ? reviews.filter(r => r.wouldRevisit).length / reviews.length : null,
+        occupancyRate: null, // placeholder until seats capacity logic
+        cancellationRate,
+        requestedAt: new Date(),
+        fromDate,
+        toDate
+      });
+
       return new Result(StatusEnum.SUCCESS, 201, analytics);
-    } catch (error) {
-      console.error("Error creating booking analytics:", error);
-      return new Result(StatusEnum.FAIL, 500, null, { message: error.message });
+    } catch (err) {
+      console.error("Error generating analytics:", err);
+      return new Result(StatusEnum.FAIL, 500, null, { message: err.message });
     }
   }
 
-  async getAllAnalytics() {
+  async getById(id) {
     try {
-      const analytics = await ActivityAnalytics.findAll({
-        include: [{ model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] }]
-      });
-      return new Result(StatusEnum.SUCCESS, 200, analytics);
-    } catch (error) {
-      console.error("Error fetching analytics:", error);
-      return new Result(StatusEnum.FAIL, 500, null, { message: error.message });
-    }
-  }
-
-  async getAnalyticsById(id) {
-    try {
-      const analytics = await ActivityAnalytics.findByPk(id, {
-        include: [{ model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] }]
-      });
-      if (!analytics) {
-        return new Result(StatusEnum.FAIL, 404, null, { message: 'Analytics not found' });
-      }
-      return new Result(StatusEnum.SUCCESS, 200, analytics);
-    } catch (error) {
-      console.error("Error fetching analytics by id:", error);
-      return new Result(StatusEnum.FAIL, 500, null, { message: error.message });
-    }
-  }
-
-  async getAnalyticsByUserId(userId) {
-    try {
-      const analytics = await ActivityAnalytics.findAll({
-        where: { user_id: userId },
-        include: [{ model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] }]
-      });
-      if (!analytics || analytics.length === 0) {
-        return new Result(StatusEnum.FAIL, 404, [], { message: 'No analytics found for this user' });
-      }
-      return new Result(StatusEnum.SUCCESS, 200, analytics);
-    } catch (error) {
-      console.error("Error fetching analytics by userId:", error);
-      return new Result(StatusEnum.FAIL, 500, null, { message: error.message });
-    }
-  }
-
-  async updateAnalytics(id, updates) {
-    try {
-      const analytics = await ActivityAnalytics.findByPk(id);
-      if (!analytics) {
-        return new Result(StatusEnum.FAIL, 404, null, { message: 'Analytics not found' });
-      }
-      await analytics.update(updates);
-      return new Result(StatusEnum.SUCCESS, 200, analytics);
-    } catch (error) {
-      console.error("Error updating analytics:", error);
-      return new Result(StatusEnum.FAIL, 500, null, { message: error.message });
-    }
-  }
-
-  async deleteAnalytics(id) {
-    try {
-      const deleted = await ActivityAnalytics.destroy({ where: { id } });
-      if (deleted === 0) {
-        return new Result(StatusEnum.FAIL, 404, null, { message: 'Analytics not found' });
-      }
-      return new Result(StatusEnum.SUCCESS, 200, { deleted: true });
-    } catch (error) {
-      console.error("Error deleting analytics:", error);
-      return new Result(StatusEnum.FAIL, 500, null, { message: error.message });
+      const a = await ActivityAnalytics.findByPk(id);
+      if (!a) return new Result(StatusEnum.FAIL, 404, null, { message: 'Not found' });
+      return new Result(StatusEnum.SUCCESS, 200, a);
+    } catch (err) {
+      return new Result(StatusEnum.FAIL, 500, null, { message: err.message });
     }
   }
 }
