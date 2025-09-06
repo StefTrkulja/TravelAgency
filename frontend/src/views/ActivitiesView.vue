@@ -33,7 +33,7 @@
             <div v-else-if="store.role === 'manager'" class="d-flex flex-column ga-2">
             <v-btn variant="flat" @click="openAnalyticsDialog(a.id)">Analytics</v-btn>
             <v-btn variant="flat">Increase Value</v-btn>
-            <v-btn variant="flat">See Reviews</v-btn>
+            <v-btn variant="flat" @click="goToReviews(a.id)">See Reviews</v-btn>
             <v-btn variant="flat">Customers</v-btn>
             </div>
         </div>
@@ -278,6 +278,11 @@ async function doDelete() {
 function goToSchedules(activityId) {
   router.push(`/activities/${activityId}/schedules`);
 }
+
+function goToReviews(activityId) {
+  router.push(`/activities/${activityId}/reviews`)
+}
+
 
 onMounted(fetchActivities);
 </script>

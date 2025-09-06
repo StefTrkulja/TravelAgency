@@ -89,6 +89,7 @@ const pieChartData = ref({
   ],
 })
 
+
 async function fetchAnalytics() {
   loading.value = true
   error.value = ''
