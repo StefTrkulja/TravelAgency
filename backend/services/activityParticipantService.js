@@ -1,4 +1,4 @@
-const { ActivityBookingParticipant, ActivityBooking } = require('../models');
+const { ActivityBookingParticipant, ActivityBooking, ActivitySchedule } = require('../models');
 const { Result, StatusEnum } = require('../utils/result');
 
 class ActivityParticipantService {
@@ -54,6 +54,27 @@ class ActivityParticipantService {
       return new Result(StatusEnum.SUCCESS, 200, participants);
     } catch (error) {
       console.error("Error fetching participants by booking:", error);
+      return new Result(StatusEnum.FAIL, 500, null, { message: error.message });
+    }
+  }
+
+  async getParticipantsByActivityId(activityId) {
+    try {
+
+
+      const bookings = await ActivityBooking.findAll({
+              include: [{ model: ActivitySchedule, as: 'activitySchedule', where: { activity_id: activityId } }]
+            });
+
+      const participants = await ActivityBookingParticipant.findAll({
+        where: { activity_booking_id: bookings.map(b => b.id) },
+        include: [
+          { model: ActivityBooking, as: 'activityBooking' }
+        ]
+      });
+      return new Result(StatusEnum.SUCCESS, 200, participants);
+    } catch (error) {
+      console.error("Error fetching participants by activity:", error);
       return new Result(StatusEnum.FAIL, 500, null, { message: error.message });
     }
   }

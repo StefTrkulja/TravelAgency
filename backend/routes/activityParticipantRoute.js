@@ -46,6 +46,17 @@ router.get('/booking/:bookingId',
   }
 );
 
+
+// Get participants by activity ID
+router.get('/activity/:activityId',
+  jwtParser.extractTokenUser,
+  async (req, res) => {
+    const result = await ActivityParticipantService.getParticipantsByActivityId(req.params.activityId);
+    return res.status(result.code).json(result.status === 'FAIL' ? { errors: result.errors } : result.data);
+  }
+);
+
+
 // Update participant
 router.put('/:id',
   jwtParser.extractTokenUser,
