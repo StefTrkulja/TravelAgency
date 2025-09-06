@@ -5,6 +5,7 @@ import SignUpView from '../views/SignUpView.vue';
 import { store } from '@/utils/store';
 import ActivitiesView from '../views/ActivitiesView.vue';
 import ActivitySchedulesView from '../views/ActivitySchedulesView.vue';
+import TravelerActivitiesView from '../views/TravelerActivitiesView.vue';
 import { ro } from 'vuetify/locale';
 
 // Define your routes
@@ -14,7 +15,7 @@ const routes = [
   { path: '/signup', name: 'SignUp', component: SignUpView },
   { path: '/arrangements/:arrangementId/activities', name: 'Activities', component: ActivitiesView },
   { path: '/activities/:activityId/schedules', name: 'ActivitySchedules', component: ActivitySchedulesView },
-
+  { path: '/traveler/activities', name: 'TravelerActivities', component: TravelerActivitiesView }
 ];
 
 // Create the router instance
