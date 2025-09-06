@@ -68,49 +68,114 @@
     <v-alert v-if="bookings.length === 0" type="info" variant="tonal">
       No booked activities yet.
     </v-alert>
-    <v-card
-      v-for="b in bookings"
-      :key="b.id"
-      class="mb-3 pa-3"
-      variant="outlined"
-    >
-      <div class="d-flex align-center justify-space-between">
-        <div>
-          <div class="text-subtitle-2">{{ b.activitySchedule?.activity?.name }}</div>
-
-        <div class="text-caption">
-        Participants: {{ b.numberOfParticipants }} | Price: {{ b.totalPrice }}
-        </div>
-        <div v-if="b.isCancelled" class="text-caption text-error">
-        Cancelled ({{ b.cancellationReason }})
-        </div>
-        <div v-if="b.review" class="text-caption text-success">
-        Reviewed ({{ b.review.overallRating }}/5)
-        </div>
-
-
-        </div>
-        <div class="d-flex ga-2">
-          <v-btn variant="outlined" color="error" @click="openCancelDialog(b)">Cancel</v-btn>
-          <v-btn variant="outlined" @click="editBooking(b)">Edit</v-btn>
-            <!-- Show review only if activity ended -->
-        <v-btn
-            v-if="new Date(b.activitySchedule?.endTime) < new Date() && !b.review"
-            variant="outlined"
-            color="primary"
-            @click="openReviewDialog(b)"
-        >
-            Review
-        </v-btn>
-        </div>
+   <v-card
+  v-for="b in bookings"
+  :key="b.id"
+  class="mb-3 pa-4"
+  variant="outlined"
+>
+  <!-- Top row: activity name + actions -->
+  <div class="d-flex align-center justify-space-between mb-2">
+    <div>
+      <div class="text-subtitle-2 font-weight-bold">
+        {{ b.activitySchedule?.activity?.name }}
       </div>
-    </v-card>
+      <div class="text-caption">
+        {{ formatDate(b.activitySchedule?.startTime) }} → {{ formatDate(b.activitySchedule?.endTime) }}
+      </div>
+    </div>
+
+    <div class="d-flex ga-2">
+      <v-btn size="small" variant="outlined" color="error" @click="openCancelDialog(b)">Cancel</v-btn>
+      <v-btn size="small" variant="outlined" @click="editBooking(b)">Edit</v-btn>
+      <v-btn
+        v-if="new Date(b.activitySchedule?.endTime) < new Date() && !b.review"
+        size="small"
+        variant="outlined"
+        color="primary"
+        @click="openReviewDialog(b)"
+      >
+        Review
+      </v-btn>
+    </div>
+  </div>
+
+  <!-- Booking details -->
+  <div class="text-caption mb-2">
+    Participants: <strong>{{ b.numberOfParticipants }}</strong> |
+    Price: <strong>{{ b.totalPrice }}</strong>
+  </div>
+
+  <!-- Cancelled status -->
+  <div v-if="b.isCancelled" class="text-caption text-error mb-2">
+    Cancelled ({{ b.cancellationReason }})
+  </div>
+
+  <!-- User's Review -->
+  <v-divider v-if="b.review" class="my-2" />
+<!-- User's review box -->
+<div v-if="b.review" class="mt-3 pa-3 rounded bg-grey-lighten-4">
+  <div class="d-flex align-center justify-space-between mb-2">
+    <div>
+      <div class="text-caption">Your review</div>
+      <div class="d-flex align-center">
+        <v-rating
+          :model-value="b.review.overallRating"
+          readonly
+          density="compact"
+          size="20"
+        />
+        <span class="ml-2 text-caption">{{ b.review.overallRating }}/5</span>
+      </div>
+    </div>
+    <div class="d-flex ga-1">
+      <v-btn size="small" variant="text" @click="openReviewDialog(b, 'edit')">Edit</v-btn>
+      <v-btn size="small" variant="text" color="error" @click="deleteReview(b)">Delete</v-btn>
+    </div>
+  </div>
+
+  <!-- Ratings in grid -->
+  <div class="mt-2" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+    <div class="d-flex align-center ga-1">
+      <span class="text-caption font-weight-medium">Org:</span>
+      <v-rating :model-value="b.review.organizationRating" readonly density="compact" size="16" />
+    </div>
+    <div class="d-flex align-center ga-1">
+      <span class="text-caption font-weight-medium">Guide:</span>
+      <v-rating :model-value="b.review.guideRating" readonly density="compact" size="16" />
+    </div>
+    <div class="d-flex align-center ga-1">
+      <span class="text-caption font-weight-medium">Value:</span>
+      <v-rating :model-value="b.review.valueForMoneyRating" readonly density="compact" size="16" />
+    </div>
+    <div class="d-flex align-center ga-1">
+      <span class="text-caption font-weight-medium">Safety:</span>
+      <v-rating :model-value="b.review.safetyRating" readonly density="compact" size="16" />
+    </div>
+    <div class="d-flex align-center ga-1">
+      <span class="text-caption font-weight-medium">Fun:</span>
+      <v-rating :model-value="b.review.funRating" readonly density="compact" size="16" />
+    </div>
+    <div class="d-flex align-center ga-1">
+      <span class="text-caption font-weight-medium">Revisit:</span>
+      <span>{{ b.review.wouldRevisit ? 'Yes' : 'No' }}</span>
+    </div>
+  </div>
+
+  <!-- Comment -->
+  <div v-if="b.review.comment" class="mt-3 text-body-2 fst-italic">
+    "{{ b.review.comment }}"
+  </div>
+</div>
+
+</v-card>
+    <!-- End Booked Activities -->
 
 
     <!-- Review Dialog -->
 <v-dialog v-model="reviewDialog.open" max-width="500">
   <v-card>
-    <v-card-title>Leave a Review</v-card-title>
+    <v-card-title>{{ reviewDialog.mode === 'edit' ? 'Edit Review' : 'Leave a Review' }}</v-card-title>
     <v-card-text>
       <div class="mb-3">
         <div class="text-subtitle-2">Overall</div>
@@ -148,7 +213,9 @@
     <v-card-actions>
       <v-spacer />
       <v-btn variant="text" @click="reviewDialog.open = false">Cancel</v-btn>
-      <v-btn color="primary" type="button" @click.prevent="saveReview">Save Review</v-btn>
+      <v-btn color="primary" type="button" @click.prevent="saveReview">
+        {{ reviewDialog.mode === 'edit' ? 'Update Review' : 'Save Review' }}
+        </v-btn>
     </v-card-actions>
   </v-card>
 </v-dialog>
@@ -301,6 +368,8 @@ const editDialog = reactive({
 const reviewDialog = reactive({
   open: false,
   booking: null,
+  mode: 'create',         // 'create' | 'edit'
+  reviewId: null,
   form: {
     overallRating: 0,
     organizationRating: 0,
@@ -368,15 +437,30 @@ async function fetchActivities() {
 
 async function fetchBookings() {
   try {
-    const { data } = await axios.get(`/activities/bookings/user/${store.username}`);                
-    bookings.value = data.filter(
-  b => b.arrangement_booking_id === arrangementId
-);
+    const { data } = await axios.get(`/activities/bookings/user/${store.username}`);
+    const mine = data.filter(b => b.arrangement_booking_id === arrangementId);
 
+    // attach my review (if any) to each booking
+    const withReviews = await Promise.all(
+      mine.map(async (b) => {
+        try {
+          const { data: reviews } = await axios.get(`/activities/reviews/booking/${b.id}`);
+          const my = Array.isArray(reviews)
+            ? reviews.find(r => r.userUsername === store.username)
+            : null;
+          return { ...b, review: my || null };
+        } catch {
+          return { ...b, review: null };
+        }
+      })
+    );
+
+    bookings.value = withReviews;
   } catch (err) {
     console.error("Failed to load bookings", err);
   }
 }
+
 
 function openBookingDialog(activity) {
   bookingDialog.activity = activity;
@@ -598,40 +682,87 @@ async function saveParticipants() {
   }
 }
 
-function openReviewDialog(booking) {
+function openReviewDialog(booking, mode = 'create') {
   reviewDialog.booking = booking;
-  reviewDialog.form = {
-    overallRating: 0,
-    organizationRating: 0,
-    guideRating: 0,
-    valueForMoneyRating: 0,
-    safetyRating: 0,
-    funRating: 0,
-    wouldRevisit: false,
-    comment: ''
-  };
+  reviewDialog.mode = mode;
+  reviewDialog.reviewId = mode === 'edit' ? booking.review?.id : null;
+
+  reviewDialog.form = mode === 'edit' && booking.review
+    ? {
+        overallRating: booking.review.overallRating ?? 0,
+        organizationRating: booking.review.organizationRating ?? 0,
+        guideRating: booking.review.guideRating ?? 0,
+        valueForMoneyRating: booking.review.valueForMoneyRating ?? 0,
+        safetyRating: booking.review.safetyRating ?? 0,
+        funRating: booking.review.funRating ?? 0,
+        wouldRevisit: !!booking.review.wouldRevisit,
+        comment: booking.review.comment ?? ''
+      }
+    : {
+        overallRating: 0,
+        organizationRating: 0,
+        guideRating: 0,
+        valueForMoneyRating: 0,
+        safetyRating: 0,
+        funRating: 0,
+        wouldRevisit: false,
+        comment: ''
+      };
+
   reviewDialog.open = true;
 }
 
 async function saveReview(e) {
   if (e?.preventDefault) e.preventDefault();
   try {
-    const payload = {
-      ...reviewDialog.form,
-      activity_booking_id: reviewDialog.booking.id,
-      userUsername: store.username,
-      createdAt: new Date().toISOString()
+    const base = {
+      overallRating: reviewDialog.form.overallRating,
+      organizationRating: reviewDialog.form.organizationRating,
+      guideRating: reviewDialog.form.guideRating,
+      valueForMoneyRating: reviewDialog.form.valueForMoneyRating,
+      safetyRating: reviewDialog.form.safetyRating,
+      funRating: reviewDialog.form.funRating,
+      wouldRevisit: reviewDialog.form.wouldRevisit,
+      comment: reviewDialog.form.comment
     };
-    await axios.post('/activities/reviews/create-review', payload);
-    snackbar.msg = 'Review submitted';
+
+    if (reviewDialog.mode === 'edit' && reviewDialog.reviewId) {
+      await axios.put(`/activities/reviews/${reviewDialog.reviewId}`, base);
+    } else {
+      const createPayload = {
+        ...base,
+        activity_booking_id: reviewDialog.booking.id,
+        userUsername: store.username,                 // backend can also infer
+        createdAt: new Date().toISOString()
+      };
+      await axios.post('/activities/reviews/create-review', createPayload);
+    }
+
+    snackbar.msg = reviewDialog.mode === 'edit' ? 'Review updated' : 'Review submitted';
     snackbar.open = true;
     reviewDialog.open = false;
+
+    // refresh bookings -> refresh attached reviews
     await fetchBookings();
   } catch (err) {
-    snackbar.msg = 'Failed to submit review';
+    snackbar.msg = 'Failed to save review';
     snackbar.open = true;
   }
 }
+
+async function deleteReview(booking) {
+  if (!booking.review?.id) return;
+  try {
+    await axios.delete(`/activities/reviews/${booking.review.id}`);
+    snackbar.msg = 'Review deleted';
+    snackbar.open = true;
+    await fetchBookings();
+  } catch (err) {
+    snackbar.msg = 'Failed to delete review';
+    snackbar.open = true;
+  }
+}
+
 
 
 onMounted(async () => {
