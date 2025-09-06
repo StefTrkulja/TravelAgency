@@ -1,6 +1,6 @@
 <template>
   <v-container class="py-8">
-    <h2 class="text-h5 mb-6">Activities for arrangement #{{ arrangementId }}</h2>
+    <h2 class="text-h5 mb-6">Activities for arrangement #{{ arrangementName }}</h2>
 
         <div v-if="store.role === 'operator'" class="d-flex justify-end mb-4">
         <v-btn color="primary" @click="openCreateDialog">Create Activity</v-btn>
@@ -31,7 +31,7 @@
 
             <!-- Manager actions -->
             <div v-else-if="store.role === 'manager'" class="d-flex flex-column ga-2">
-            <v-btn variant="flat">Analytics</v-btn>
+            <v-btn variant="flat" @click="openAnalyticsDialog(a.id)">Analytics</v-btn>
             <v-btn variant="flat">Increase Value</v-btn>
             <v-btn variant="flat">See Reviews</v-btn>
             <v-btn variant="flat">Customers</v-btn>
@@ -39,6 +39,23 @@
         </div>
       </v-card-text>
     </v-card>
+
+    <!-- Analytics Dialog -->
+    <v-dialog v-model="analyticsDialog.open" max-width="500">
+    <v-card>
+        <v-card-title>Generate Analytics</v-card-title>
+        <v-card-text>
+        <v-text-field v-model="analyticsForm.fromDate" label="From Date" type="date" />
+        <v-text-field v-model="analyticsForm.toDate" label="To Date" type="date" />
+        </v-card-text>
+        <v-card-actions>
+        <v-spacer />
+        <v-btn text @click="analyticsDialog.open = false">Cancel</v-btn>
+        <v-btn color="primary" @click="generateAnalytics">Generate</v-btn>
+        </v-card-actions>
+    </v-card>
+    </v-dialog>
+
 
     <!-- Create / Edit Dialog -->
     <v-dialog v-model="dialog.open" max-width="600">
@@ -101,6 +118,7 @@ const router = useRouter();
 
 // If arrangement page isn't ready, you can navigate directly to /arrangements/1/activities
 const arrangementId = computed(() => Number(route.params.arrangementId) || 1);
+const arrangementName = 'Paris Summer Trip';
 
 const activities = ref([]);
 const loading = ref(false);
@@ -113,6 +131,8 @@ const seasonOptions = ['SPRING','SUMMER','AUTUMN','WINTER','ALL'];
 const dialog = reactive({ open: false, mode: 'create', editingId: null });
 const deleteDialog = reactive({ open: false, item: null });
 const snackbar = reactive({ open: false, msg: '' });
+const analyticsDialog = reactive({ open: false, activityId: null });
+const analyticsForm = reactive({ fromDate: '', toDate: '' });
 
 const form = reactive({
   name: '',
@@ -133,6 +153,26 @@ const form = reactive({
   arrangement_id: null,
   user_id: null, // replace with your auth mapping when ready
 });
+
+function openAnalyticsDialog(activityId) {
+  analyticsDialog.activityId = activityId;
+  analyticsDialog.open = true;
+}
+
+async function generateAnalytics() {
+  try {
+    const { data } = await axios.post('/activities/analytics/create', {
+      activity_id: analyticsDialog.activityId,
+      fromDate: analyticsForm.fromDate,
+      toDate: analyticsForm.toDate
+    });
+    analyticsDialog.open = false;
+    router.push(`/activities/${analyticsDialog.activityId}/analytics/${data.id}`);
+  } catch (e) {
+    snackbar.msg = e?.response?.data?.errors?.[0]?.message || 'Failed to generate analytics';
+    snackbar.open = true;
+  }
+}
 
 async function fetchActivities() {
   loading.value = true;
