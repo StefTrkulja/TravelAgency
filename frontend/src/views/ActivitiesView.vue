@@ -2,9 +2,10 @@
   <v-container class="py-8">
     <h2 class="text-h5 mb-6">Activities for arrangement #{{ arrangementId }}</h2>
 
-    <div class="d-flex justify-end mb-4">
-      <v-btn color="primary" @click="openCreateDialog">Create Activity</v-btn>
-    </div>
+        <div v-if="store.role === 'operator'" class="d-flex justify-end mb-4">
+        <v-btn color="primary" @click="openCreateDialog">Create Activity</v-btn>
+        </div>
+
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
     <v-progress-linear v-if="loading" indeterminate class="mb-4" />
@@ -21,11 +22,20 @@
               <strong>Max:</strong> {{ a.maxCapacity }}
             </div>
           </div>
-          <div class="d-flex ga-2">
+            <!-- Operator actions -->
+            <div v-if="store.role === 'operator'" class="d-flex ga-2">
             <v-btn icon="mdi-pencil" variant="tonal" @click="openEditDialog(a)" />
             <v-btn icon="mdi-delete" variant="tonal" color="error" @click="confirmDelete(a)" />
             <v-btn variant="flat" @click="goToSchedules(a.id)">Add Schedule</v-btn>
-          </div>
+            </div>
+
+            <!-- Manager actions -->
+            <div v-else-if="store.role === 'manager'" class="d-flex flex-column ga-2">
+            <v-btn variant="flat">Analytics</v-btn>
+            <v-btn variant="flat">Increase Value</v-btn>
+            <v-btn variant="flat">See Reviews</v-btn>
+            <v-btn variant="flat">Customers</v-btn>
+            </div>
         </div>
       </v-card-text>
     </v-card>
