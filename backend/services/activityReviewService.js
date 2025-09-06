@@ -1,4 +1,4 @@
-const { ActivityReview, User, ActivityBooking } = require('../models');
+const { ActivityReview, User, ActivitySchedule, ActivityBooking } = require('../models');
 const { Result, StatusEnum } = require('../utils/result');
 
 class ActivityReviewService {
@@ -70,6 +70,26 @@ class ActivityReviewService {
     try {
       const reviews = await ActivityReview.findAll({
         where: { activity_booking_id: bookingId },
+        include: [
+          { model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] },
+          { model: ActivityBooking, as: 'activityBooking' }
+        ]
+      });
+      return new Result(StatusEnum.SUCCESS, 200, reviews);
+    } catch (error) {
+      console.error("Error fetching reviews by booking:", error);
+      return new Result(StatusEnum.FAIL, 500, null, { message: error.message });
+    }
+  }
+
+  async getReviewsByActivityId(activityId) {
+    try {
+      const bookings = await ActivityBooking.findAll({
+              include: [{ model: ActivitySchedule, as: 'activitySchedule', where: { activity_id: activityId } }]
+            });
+
+      const reviews = await ActivityReview.findAll({
+        where: { activity_booking_id: bookings.map(b => b.id) },
         include: [
           { model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] },
           { model: ActivityBooking, as: 'activityBooking' }

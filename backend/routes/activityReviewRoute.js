@@ -57,6 +57,16 @@ router.get('/booking/:bookingId',
   }
 );
 
+router.get('/activity/:activityId',
+  jwtParser.extractTokenUser,
+  async (req, res) => {
+    const result = await ActivityReviewService.getReviewsByActivityId(req.params.activityId);
+    return res.status(result.code).json(
+      result.status === 'FAIL' ? { errors: result.errors } : result.data
+    );
+  }
+);
+
 
 // Constrain :id to digits only
 router.get('/:id(\\d+)',
