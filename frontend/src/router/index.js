@@ -4,12 +4,15 @@ import HomeView from '../views/HomeView.vue';
 import SignUpView from '../views/SignUpView.vue';
 import { store } from '@/utils/store';
 import { ro } from 'vuetify/locale';
-
+import MyTicketsView from '@/views/user/MyTicketsView.vue';
+import TicketsView from '../views/Operator/TicketsView.vue';  
 // Define your routes
 const routes = [
   { path: '/', name: 'Home', component: HomeView },
   { path: '/login', name: 'Login', component: LoginView },
   { path: '/signup', name: 'SignUp', component: SignUpView },
+  { path: '/my/tickets', name: 'MyTickets', component: MyTicketsView, meta: { requiresAuth: true, role: ['user'] }},
+  { path: '/tickets', name: 'Tickets', component: TicketsView, meta: { requiresAuth: true, role: ['operator'] }},
 ];
 
 // Create the router instance

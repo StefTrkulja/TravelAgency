@@ -1,5 +1,6 @@
-<template>
-	Testerino
+<template  >
+
+
 </template>
 
 <script>

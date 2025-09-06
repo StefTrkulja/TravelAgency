@@ -5,12 +5,10 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const userRoute = require('./routes/userRoute');
-// // const postRoute = require('./routes/postRoute');
-// // const locationRoute = require('./routes/locationRoute');
-// // const imageRoute = require('./routes/imageRoute');
-// // const statsRoute = require('./routes/statsRoute');
-// // const groupRoute = require('./routes/groupRoute');
-// // const groupMessageRoute = require('./routes/groupMessageRoute');
+const reservationRoute = require('./routes/reservationRoute');
+const complaintRoute = require('./routes/complaintRoute');
+const statusRoute = require('./routes/statusRoute');
+
 const sequelize = require('./models/index').sequelize;
 const { register } = require('./utils/metrics');
 const path = require('path');
@@ -35,6 +33,9 @@ app.get('/test', (req, res) => {
 });
 
 app.use('/api/user', userRoute);
+app.use('/api/reservation', reservationRoute);
+app.use('/api/complaint', complaintRoute);	
+app.use('/api/status', statusRoute);
 // app.use('/api/post', postRoute);
 // app.use('/api/location', locationRoute);
 // app.use('/api/image', imageRoute);
