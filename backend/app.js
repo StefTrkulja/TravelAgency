@@ -15,10 +15,6 @@ const sequelize = require('./models/index').sequelize;
 const { register } = require('./utils/metrics');
 const path = require('path');
 
-const arrangementsRoutes = require('./routes/arrangements.routes');
-const departuresRoutes = require('./routes/departures.routes');
-const itinerariesRoutes = require('./routes/itineraries.routes');
-const activitiesRoutes = require('./routes/activities.routes');
 
 
 // require('./services/scheduler');
@@ -41,10 +37,14 @@ app.get('/test', (req, res) => {
 });
 
 app.use('/api/user', userRoute);
-app.use('/api/arrangements', arrangementsRoutes);
-app.use('/api/departures', departuresRoutes);
-app.use('/api/itineraries', itinerariesRoutes);
-app.use('/api/activities', activitiesRoutes);
+app.use('/api/arrangements', require('./routes/arrangements.routes'));
+app.use('/api/offers', require('./routes/offers.routes'));
+app.use('/api/approvals', require('./routes/approvals.routes'));
+app.use('/api/departures', require('./routes/departures.routes'));
+app.use('/api/itineraries', require('./routes/itineraries.routes'));
+app.use('/api/activities', require('./routes/activities.routes'));
+app.use('/api/destinations', require('./routes/destinations.routes'));
+
 // app.use('/api/post', postRoute);
 // app.use('/api/location', locationRoute);
 // app.use('/api/image', imageRoute);

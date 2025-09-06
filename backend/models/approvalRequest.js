@@ -2,11 +2,8 @@
 // @ts-ignore
 const { Model } = require('sequelize');
 
-const ApprovalDecision = { 
-  PENDING: 'PENDING', 
-  APPROVED: 'APPROVED', 
-  REJECTED: 'REJECTED' 
-};
+const ApprovalDecision = { PENDING:'PENDING', APPROVED:'APPROVED', REJECTED:'REJECTED', CHANGES_REQUESTED:'CHANGES_REQUESTED' };
+
 
 module.exports = (sequelize, DataTypes) => {
   class ApprovalRequest extends Model {

@@ -1,189 +1,281 @@
-const { Result, StatusEnum } = require('../utils/result');
+// backend/services/arrangements.service.js
 const {
-  TravelArrangement, Destination, ArrangementVersion,
-  Departure, Itinerary, ItineraryActivity,
-  SupplierOffer, OfferSelection, ApprovalRequest 
+  sequelize,
+  TravelArrangement,
+  Destination,
+  OfferSelection,
+  SupplierOffer,
+  Supplier,
+  SupplierOfferOption,
+  SupplierOfferItineraryItem,
+  ArrangementVersion,
+  ApprovalRequest,
+  Departure,
+  Itinerary,
+  ItineraryActivity,
+  User
 } = require('../models');
-const sequelize = require('../models').sequelize;
+
 const { Op } = require('sequelize');
 
-class ArrangementsService {
-  async create(payload, operatorUsername) {
-    const tx = await sequelize.transaction();
-    try {
-      const dest = await Destination.findByPk(payload.destinationId, { transaction: tx });
-      if (!dest) return new Result(StatusEnum.FAIL, 404, null, [{ message: 'Destination not found' }]);
-
-      const a = await TravelArrangement.create({
-        destinationId: payload.destinationId,
-        createdByUsername: operatorUsername,
-        title: payload.title,
-        summary: payload.summary,
-        basePricePerPerson: payload.basePricePerPerson,
-        transportType: payload.transportType,
-        accommodationType: payload.accommodationType,
-        type: payload.type,
-        status: 'DRAFT'
-      }, { transaction: tx });
-
-      await ArrangementVersion.create({
-        arrangementId: a.id, versionNo: 1, changeNote: 'Initial'
-      }, { transaction: tx });
-
-      if (payload.startDate) {
-        await Departure.create({
-          arrangementId: a.id,
-          startDate: payload.startDate,
-          endDate: (payload.type === 'DAY_TRIP') ? payload.startDate : (payload.endDate || null),
-          capacityTotal: payload.capacityTotal ?? 0,
-          status: 'SCHEDULED'
-        }, { transaction: tx });
-      }
-
-      await tx.commit();
-      return new Result(StatusEnum.OK, 201, a);
-    } catch (e) {
-      await tx.rollback();
-      return new Result(StatusEnum.FAIL, 500, null, [{ message: e.message }]);
-    }
-  }
-
-  async getById(id, withRelations = true) {
-    const include = withRelations ? [
-      { model: Destination, as: 'destination' },
-      { model: ArrangementVersion, as: 'versions' },
-      { model: Departure, as: 'departures' },
-      { model: SupplierOffer, as: 'offers' },
-      { model: OfferSelection, as: 'selection' },
-      { model: ApprovalRequest, as: 'approvals' }
-    ] : [];
-    const a = await TravelArrangement.findByPk(id, { include });
-    if (!a) return new Result(StatusEnum.FAIL, 404, null, [{ message: 'Arrangement not found' }]);
-    return new Result(StatusEnum.OK, 200, a);
-  }
- async list(query = {}) {
-    const {
-      status, // može biti "DRAFT" ili "DRAFT,PENDING"
-      type, destinationId, createdByUsername, search,
-      page = 1, size = 10, sort = 'createdAt', order = 'DESC'
-    } = query;
-
-    const where = {};
-    // ➜ podrška za više statusa
-    if (status) {
-      const statuses = String(status).split(',').map(s => s.trim()).filter(Boolean);
-      where.status = statuses.length > 1 ? { [Op.in]: statuses } : statuses[0];
-    }
-
-    if (type) where.type = type;
-    if (destinationId) where.destinationId = destinationId;
-    if (createdByUsername) where.createdByUsername = createdByUsername;
-    if (search) where.title = { [Op.iLike]: `%${search}%` };
-
-    const limit = Math.min(Number(size) || 10, 100);
-    const offset = (Math.max(Number(page) || 1, 1) - 1) * limit;
-
-    const { rows, count } = await TravelArrangement.findAndCountAll({
-      where,
-      order: [[sort, order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC']],
-      limit,
-      offset,
-      include: [{ model: Destination, as: 'destination' }]
-    });
-
-    return new Result(StatusEnum.OK, 200, { items: rows, page: Number(page)||1, size: limit, total: count });
-  }
-
-  // ➜ potpuno odvojeno grupisanje po statusima
-  async listGrouped() {
-    const [draft, pending, active] = await Promise.all([
-      TravelArrangement.findAll({
-        where: { status: 'DRAFT' },
-        include: [{ model: Destination, as: 'destination' }],
-        order: [['createdAt', 'DESC']]
-      }),
-      TravelArrangement.findAll({
-        where: { status: 'PENDING' },
-        include: [{ model: Destination, as: 'destination' }],
-        order: [['createdAt', 'DESC']]
-      }),
-      TravelArrangement.findAll({
-        where: { status: 'ACTIVE' },
-        include: [{ model: Destination, as: 'destination' }],
-        order: [['createdAt', 'DESC']]
-      }),
-    ]);
-
-    return new Result(StatusEnum.OK, 200, { draft, pending, active });
-  }
-
-  async update(id, payload, operatorUsername) {
-    const tx = await sequelize.transaction();
-    try {
-      const a = await TravelArrangement.findByPk(id, { transaction: tx });
-      if (!a) { await tx.rollback(); return new Result(StatusEnum.FAIL, 404, null, [{ message: 'Arrangement not found' }]); }
-
-      const changed = [];
-      const updatable = [
-        'title','summary','basePricePerPerson','transportType','accommodationType','type','status','destinationId'
-      ];
-      for (const k of updatable) {
-        if (payload[k] !== undefined && payload[k] !== a[k]) {
-          changed.push(`${k}: ${a[k]} -> ${payload[k]}`);
-          a[k] = payload[k];
-        }
-      }
-      await a.save({ transaction: tx });
-
-      const last = await ArrangementVersion.findOne({
-        where: { arrangementId: a.id }, order: [['versionNo','DESC']], transaction: tx
-      });
-      await ArrangementVersion.create({
-        arrangementId: a.id,
-        versionNo: (last ? last.versionNo + 1 : 1),
-        changeNote: payload.changeNote || (changed.length ? changed.join('; ') : 'No changes note')
-      }, { transaction: tx });
-
-      await tx.commit();
-      return new Result(StatusEnum.OK, 200, a);
-    } catch (e) {
-      await tx.rollback();
-      return new Result(StatusEnum.FAIL, 500, null, [{ message: e.message }]);
-    }
-  }
-
-  async remove(id) {
-    const tx = await sequelize.transaction();
-    try {
-      const a = await TravelArrangement.findByPk(id, { transaction: tx });
-      if (!a) { await tx.rollback(); return new Result(StatusEnum.FAIL, 404, null, [{ message: 'Arrangement not found' }]); }
-
-      // kaskade ručno
-      const deps = await Departure.findAll({ where: { arrangementId: id }, transaction: tx });
-      const depIds = deps.map(d => d.id);
-      if (depIds.length) {
-        const its = await Itinerary.findAll({ where: { departureId: { [Op.in]: depIds } }, transaction: tx });
-        const itIds = its.map(i => i.id);
-        if (itIds.length) {
-          await ItineraryActivity.destroy({ where: { itineraryId: { [Op.in]: itIds } }, transaction: tx });
-          await Itinerary.destroy({ where: { id: { [Op.in]: itIds } }, transaction: tx });
-        }
-        await Departure.destroy({ where: { id: { [Op.in]: depIds } }, transaction: tx });
-      }
-
-      await OfferSelection.destroy({ where: { arrangementId: id }, transaction: tx });
-      await SupplierOffer.destroy({ where: { arrangementId: id }, transaction: tx });
-      await ApprovalRequest.destroy({ where: { arrangementId: id }, transaction: tx });
-      await ArrangementVersion.destroy({ where: { arrangementId: id }, transaction: tx });
-
-      await a.destroy({ transaction: tx });
-      await tx.commit();
-      return new Result(StatusEnum.OK, 200, { deleted: id });
-    } catch (e) {
-      await tx.rollback();
-      return new Result(StatusEnum.FAIL, 500, null, [{ message: e.message }]);
-    }
+// Status machine guards
+const Allowed = {
+  DRAFT: ['QUOTING', 'READY'],
+  QUOTING: ['READY'],
+  READY: ['PENDING', 'DRAFT'],
+  PENDING: ['ACTIVE', 'CHANGES_REQUESTED'],
+  CHANGES_REQUESTED: ['READY'],
+  ACTIVE: ['INACTIVE'],
+  INACTIVE: []
+};
+function assertTransition(from, to) {
+  if (!Allowed[from]?.includes(to)) {
+    throw new Error(`Transition ${from}→${to} not allowed`);
   }
 }
 
-module.exports = new ArrangementsService();
+// Category ↔ OfferType map (aligned to your enums)
+const CategoryMap = {
+  TRANSPORT: ['BUS', 'AIRLINE'],
+  ACCOMMODATION: ['HOTEL'], // dodaj APT/HOSTEL ako uvedeš u OfferType
+  TOUR: ['TOUR', 'GUIDE']
+};
+function categoryMatchesOfferType(category, offerType) {
+  const arr = CategoryMap[category] || [];
+  return arr.includes(offerType);
+}
+
+function ensureOperatorOrAdminOnArrangement(user, arrangement) {
+  if (user.role === 'ADMIN') return;
+  if (user.role !== 'OPERATOR' || arrangement.createdByUsername !== user.username) {
+    throw new Error('Forbidden');
+  }
+}
+
+async function createArrangement(user, payload) {
+  if (!['OPERATOR', 'ADMIN'].includes(user.role)) throw new Error('Forbidden');
+
+  const required = ['destinationId', 'title', 'basePricePerPerson', 'transportType', 'accommodationType', 'type'];
+  required.forEach(k => { if (payload[k] === undefined || payload[k] === null || payload[k] === '') throw new Error(`Missing ${k}`); });
+
+  const dest = await Destination.findByPk(payload.destinationId);
+  if (!dest) throw new Error('Destination not found');
+
+  const a = await TravelArrangement.create({
+    destinationId: payload.destinationId,
+    createdByUsername: user.username,
+    title: payload.title,
+    summary: payload.summary || null,
+    basePricePerPerson: payload.basePricePerPerson,
+    transportType: payload.transportType,        // BUS | PLANE | OWN
+    accommodationType: payload.accommodationType,// HOTEL | APT | HOSTEL | OTHER
+    type: payload.type,                          // DAY_TRIP | MULTI_DAY
+    // status default: DRAFT
+  });
+
+  // Optionally create initial version
+  await ArrangementVersion.create({
+    arrangementId: a.id,
+    versionNo: 1,
+    changeNote: 'Initial creation'
+  });
+
+  return a;
+}
+
+async function listArrangements(user, query = {}) {
+  const where = {};
+  const include = [{ model: Destination, as: 'destination' }];
+
+  if (user.role === 'OPERATOR') {
+    where.createdByUsername = user.username;
+  } else if (user.role === 'SUPPLIER') {
+    // Supplier vidi aranžmane za koje postoji bar jedan SupplierOffer prema njemu
+    const sup = await Supplier.findOne({ where: { accountUsername: user.username } });
+    if (!sup) return [];
+    include.push({
+      model: SupplierOffer,
+      as: 'offers',
+      where: { supplierId: sup.id },
+      required: true
+    });
+  } else {
+    // MANAGER/ADMIN – bez posebnog filtera
+  }
+
+  return await TravelArrangement.findAll({ where, include, order: [['createdAt', 'DESC']] });
+}
+
+async function getArrangement(user, id) {
+  const a = await TravelArrangement.findByPk(id, {
+    include: [
+      { model: Destination, as: 'destination' },
+      {
+        model: OfferSelection,
+        as: 'selections',
+        include: [{ model: SupplierOffer, as: 'offer' }]
+      },
+      {
+        model: Departure,
+        as: 'departures',
+        include: [{ model: Itinerary, as: 'Itineraries', include: [{ model: ItineraryActivity, as: 'ItineraryActivities' }] }]
+      },
+      { model: ArrangementVersion, as: 'versions' },
+      { model: ApprovalRequest, as: 'approvals' }
+    ]
+  });
+  if (!a) return null;
+
+  if (user.role === 'OPERATOR' && a.createdByUsername !== user.username) throw new Error('Forbidden');
+  if (user.role === 'SUPPLIER') {
+    const sup = await Supplier.findOne({ where: { accountUsername: user.username } });
+    if (!sup) throw new Error('Forbidden');
+    const count = await SupplierOffer.count({ where: { arrangementId: a.id, supplierId: sup.id } });
+    if (!count) throw new Error('Forbidden');
+  }
+  return a;
+}
+
+async function updateArrangement(user, id, payload) {
+  return await sequelize.transaction(async (tx) => {
+    const a = await TravelArrangement.findByPk(id, { transaction: tx });
+    if (!a) throw new Error('Not found');
+
+    ensureOperatorOrAdminOnArrangement(user, a);
+
+    if (!['DRAFT', 'READY', 'CHANGES_REQUESTED'].includes(a.status)) {
+      throw new Error(`Cannot edit arrangement in status ${a.status}`);
+    }
+
+    const fields = ['title', 'summary', 'basePricePerPerson', 'transportType', 'accommodationType', 'type'];
+    fields.forEach(f => { if (payload[f] !== undefined) a[f] = payload[f]; });
+    await a.save({ transaction: tx });
+
+    const lastVersion = await ArrangementVersion.max('versionNo', { where: { arrangementId: a.id }, transaction: tx }) || 1;
+    await ArrangementVersion.create({
+      arrangementId: a.id,
+      versionNo: Number(lastVersion) + 1,
+      changeNote: payload._changeNote || 'Update'
+    }, { transaction: tx });
+
+    return a;
+  });
+}
+
+async function deleteArrangement(user, id) {
+  return await sequelize.transaction(async (tx) => {
+    const a = await TravelArrangement.findByPk(id, { transaction: tx });
+    if (!a) throw new Error('Not found');
+
+    if (user.role !== 'ADMIN') {
+      ensureOperatorOrAdminOnArrangement(user, a);
+      if (a.status !== 'DRAFT') throw new Error('Only DRAFT can be deleted by operator');
+    }
+
+    // Clean child data
+    await OfferSelection.destroy({ where: { arrangementId: id }, transaction: tx });
+
+    const offers = await SupplierOffer.findAll({ where: { arrangementId: id }, transaction: tx });
+    const offerIds = offers.map(o => o.id);
+    if (offerIds.length) {
+      await SupplierOfferOption.destroy({ where: { offerId: { [Op.in]: offerIds } }, transaction: tx });
+      await SupplierOfferItineraryItem.destroy({ where: { offerId: { [Op.in]: offerIds } }, transaction: tx });
+      await SupplierOffer.destroy({ where: { id: { [Op.in]: offerIds } }, transaction: tx });
+    }
+
+    await Departure.destroy({ where: { arrangementId: id }, transaction: tx });
+    await ArrangementVersion.destroy({ where: { arrangementId: id }, transaction: tx });
+    await ApprovalRequest.destroy({ where: { arrangementId: id }, transaction: tx });
+
+    await a.destroy({ transaction: tx });
+    return { ok: true };
+  });
+}
+
+/**
+ * Select a supplier offer for a given category.
+ * body: { offerId, category: 'TRANSPORT'|'ACCOMMODATION'|'TOUR' }
+ */
+async function selectOffer(user, arrangementId, body) {
+  return await sequelize.transaction(async (tx) => {
+    const a = await TravelArrangement.findByPk(arrangementId, { transaction: tx });
+    if (!a) throw new Error('Arrangement not found');
+    ensureOperatorOrAdminOnArrangement(user, a);
+
+    if (!['DRAFT', 'QUOTING', 'READY', 'CHANGES_REQUESTED'].includes(a.status)) {
+      throw new Error(`Cannot select offers in status ${a.status}`);
+    }
+
+    const { offerId, category } = body || {};
+    if (!offerId || !category) throw new Error('offerId and category are required');
+
+    const offer = await SupplierOffer.findByPk(offerId, { transaction: tx });
+    if (!offer || offer.arrangementId !== a.id) throw new Error('Offer not found for this arrangement');
+
+    if (!categoryMatchesOfferType(category, offer.offerType)) {
+      throw new Error(`Offer type ${offer.offerType} cannot be used for category ${category}`);
+    }
+
+    // Upsert selection (unique (arrangementId, category))
+    const existing = await OfferSelection.findOne({ where: { arrangementId, category }, transaction: tx });
+    if (existing) {
+      existing.offerId = offerId;
+      existing.selectedByUsername = user.username;
+      existing.selectedAt = new Date();
+      await existing.save({ transaction: tx });
+    } else {
+      await OfferSelection.create({
+        arrangementId,
+        offerId,
+        category,
+        selectedByUsername: user.username
+      }, { transaction: tx });
+    }
+
+    // Move to READY if required categories are all chosen
+    const requiredCats = a.type === 'DAY_TRIP' ? ['TRANSPORT', 'TOUR'] : ['TRANSPORT', 'ACCOMMODATION', 'TOUR'];
+    const count = await OfferSelection.count({
+      where: { arrangementId, category: { [Op.in]: requiredCats } },
+      transaction: tx
+    });
+    if (count === requiredCats.length && a.status !== 'READY') {
+      if (['DRAFT', 'QUOTING', 'CHANGES_REQUESTED'].includes(a.status)) {
+        assertTransition(a.status, 'READY');
+        a.status = 'READY';
+        await a.save({ transaction: tx });
+      }
+    }
+
+    return { ok: true };
+  });
+}
+
+/**
+ * Unselect (remove) the selection for a given category.
+ * body: { category }
+ */
+async function unselectOffer(user, arrangementId, body) {
+  return await sequelize.transaction(async (tx) => {
+    const a = await TravelArrangement.findByPk(arrangementId, { transaction: tx });
+    if (!a) throw new Error('Arrangement not found');
+    ensureOperatorOrAdminOnArrangement(user, a);
+
+    const { category } = body || {};
+    if (!category) throw new Error('category is required');
+
+    await OfferSelection.destroy({ where: { arrangementId, category }, transaction: tx });
+
+    return { ok: true };
+  });
+}
+
+module.exports = {
+  createArrangement,
+  listArrangements,
+  getArrangement,
+  updateArrangement,
+  deleteArrangement,
+  selectOffer,
+  unselectOffer,
+  assertTransition
+};
