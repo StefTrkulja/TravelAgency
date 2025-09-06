@@ -5,7 +5,7 @@ class ActivityReviewService {
   async createReview(payload) {
     try {
       // optional existence checks
-      const user = await User.findByPk(payload.user_id);
+      const user = await User.findByPk(payload.userUsername);
       if (!user) return new Result(StatusEnum.FAIL, 400, null, { message: 'Invalid user_id' });
 
       const booking = await ActivityBooking.findByPk(payload.activity_booking_id);
@@ -50,10 +50,10 @@ class ActivityReviewService {
     }
   }
 
-  async getReviewsByUserId(userId) {
+  async getReviewsByUserId(username) {
     try {
       const reviews = await ActivityReview.findAll({
-        where: { user_id: userId },
+        where: { userUsername: username },
         include: [
           { model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] },
           { model: ActivityBooking, as: 'activityBooking' }

@@ -4,16 +4,6 @@ const { Result, StatusEnum } = require('../utils/result');
 class ActivityBookingService {
   async createBooking(payload) {
     try {
-      // Optional existence checks
-      const user = await User.findByPk(payload.user_id);
-      if (!user) return new Result(StatusEnum.FAIL, 400, null, { message: 'Invalid user_id' });
-
-      const schedule = await ActivitySchedule.findByPk(payload.activity_schedule_id);
-      if (!schedule) return new Result(StatusEnum.FAIL, 400, null, { message: 'Invalid activity_schedule_id' });
-
-      const arrangementBooking = await Booking.findByPk(payload.arrangement_booking_id);
-      if (!arrangementBooking) return new Result(StatusEnum.FAIL, 400, null, { message: 'Invalid arrangement_booking_id' });
-
       const booking = await ActivityBooking.create(payload);
       return new Result(StatusEnum.SUCCESS, 201, booking);
     } catch (error) {
@@ -57,10 +47,10 @@ class ActivityBookingService {
     }
   }
 
-  async getBookingsByUserId(userId) {
+  async getBookingsByUserId(username) {
     try {
       const bookings = await ActivityBooking.findAll({
-        where: { user_id: userId },
+        where: { userUsername: username },
         include: [
           { model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] },
           { model: ActivitySchedule, as: 'activitySchedule' },

@@ -26,11 +26,11 @@ const activitiesRoutes = require('./routes/activities.routes');
 
 const activityRoute = require('./routes/activityRoute');
 const scheduleRoute = require('./routes/activityScheduleRoute');
-const bookingRoute = require('./routes/activityBookingRoute');
+const activityBookingRoute = require('./routes/activityBookingRoute');
 const participantRoute = require('./routes/activityParticipantRoute');
 const reviewRoute = require('./routes/activityReviewRoute');
 const analyticsRoute = require('./routes/activityAnalyticsRoute');
-
+const bookingRoute = require('./routes/bookingRoute');
 
 
 
@@ -50,7 +50,7 @@ app.get('/test', (req, res) => {
 
 app.use('/api/activities', activityRoute);
 app.use('/api/activities/schedules', scheduleRoute);
-app.use('/api/activities/bookings', bookingRoute);
+app.use('/api/activities/bookings', activityBookingRoute);
 app.use('/api/activities/participants', participantRoute);
 app.use('/api/activities/reviews', reviewRoute);
 app.use('/api/activities/analytics', analyticsRoute);
