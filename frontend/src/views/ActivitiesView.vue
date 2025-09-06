@@ -34,7 +34,7 @@
             <v-btn variant="flat" @click="openAnalyticsDialog(a.id)">Analytics</v-btn>
             <v-btn variant="flat">Increase Value</v-btn>
             <v-btn variant="flat" @click="goToReviews(a.id)">See Reviews</v-btn>
-            <v-btn variant="flat">Customers</v-btn>
+            <v-btn variant="flat" @click="goToCustomers(a.id)">Customers</v-btn>
             </div>
         </div>
       </v-card-text>
@@ -283,6 +283,9 @@ function goToReviews(activityId) {
   router.push(`/activities/${activityId}/reviews`)
 }
 
+function goToCustomers(activityId) {
+  router.push(`/activities/${activityId}/customers`);
+}
 
 onMounted(fetchActivities);
 </script>

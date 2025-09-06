@@ -8,6 +8,7 @@ import ActivitySchedulesView from '../views/ActivitySchedulesView.vue';
 import TravelerActivitiesView from '../views/TravelerActivitiesView.vue';
 import AnalyticsDetailsView from '../views/AnalyticsDetails.vue';
 import ActivityReviewsView from '../views/ActivityReviewsView.vue';
+import ActivityCustomersView from '../views/ActivityCustomerView.vue';
 import { ro } from 'vuetify/locale';
 
 // Define your routes
@@ -19,7 +20,8 @@ const routes = [
   { path: '/activities/:activityId/schedules', name: 'ActivitySchedules', component: ActivitySchedulesView },
   { path: '/traveler/activities', name: 'TravelerActivities', component: TravelerActivitiesView },
   { path: '/activities/:activityId/analytics/:analyticsId', name: 'AnalyticsDetails', component: AnalyticsDetailsView },
-  { path: '/activities/:activityId/reviews', name: 'ActivityReviews', component: ActivityReviewsView }
+  { path: '/activities/:activityId/reviews', name: 'ActivityReviews', component: ActivityReviewsView },
+  { path: '/activities/:activityId/customers', name: 'ActivityCustomers', component: ActivityCustomersView }
 ];
 
 // Create the router instance
