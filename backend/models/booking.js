@@ -7,7 +7,11 @@ module.exports = (sequelize, DataTypes) => {
   class Booking extends Model {
     static associate(models) {
       // Relations to other tables
-      Booking.belongsTo(models.User, { foreignKey: 'traveler_id', as: 'traveler' });
+      Booking.belongsTo(models.User, { 
+        foreignKey: 'userUsername', 
+        targetKey: 'username',
+        as: 'user' 
+      });
       Booking.belongsTo(models.Departure, { foreignKey: 'departure_id', as: 'departure' });
     }
   }
@@ -28,6 +32,14 @@ module.exports = (sequelize, DataTypes) => {
     isPetFriendly: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     isAdventurous: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     isBusiness: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+        userUsername: { 
+      type: DataTypes.STRING, 
+      allowNull: false,
+      references: {
+        model: 'Users',        // table name
+        key: 'username'
+      }
+    }
   }, {
     sequelize,
     modelName: 'Booking',

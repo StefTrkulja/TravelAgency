@@ -4,7 +4,11 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class ActivityBooking extends Model {
     static associate(models) {
-      ActivityBooking.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
+      ActivityBooking.belongsTo(models.User, { 
+        foreignKey: 'userUsername', 
+        targetKey: 'username',
+        as: 'user' 
+      });
       ActivityBooking.belongsTo(models.ActivitySchedule, { foreignKey: 'activity_schedule_id', as: 'activitySchedule' });
       ActivityBooking.belongsTo(models.Booking, { foreignKey: 'arrangement_booking_id', as: 'arrangementBooking' });
     }
@@ -19,6 +23,14 @@ module.exports = (sequelize, DataTypes) => {
     cancelledAt: { type: DataTypes.DATE, allowNull: true },
     cancellationReason: { type: DataTypes.STRING, allowNull: true },
     petsIncluded: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+        userUsername: { 
+      type: DataTypes.STRING, 
+      allowNull: false,
+      references: {
+        model: 'Users',        // table name
+        key: 'username'
+      }
+    }
   }, {
     sequelize,
     modelName: 'ActivityBooking',

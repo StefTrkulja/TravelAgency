@@ -5,7 +5,11 @@ module.exports = (sequelize, DataTypes) => {
   class ActivityAnalytics extends Model {
     static associate(models) {
       ActivityAnalytics.belongsTo(models.Activity, { foreignKey: 'activity_id', as: 'activity' });
-      ActivityAnalytics.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
+      ActivityAnalytics.belongsTo(models.User, { 
+        foreignKey: 'userUsername', 
+        targetKey: 'username',
+        as: 'user' 
+      });
     }
   }
 
@@ -28,6 +32,14 @@ module.exports = (sequelize, DataTypes) => {
     requestedAt: { type: DataTypes.DATE, allowNull: false },
     fromDate: { type: DataTypes.DATEONLY, allowNull: false },
     toDate: { type: DataTypes.DATEONLY, allowNull: false },
+    userUsername: { 
+      type: DataTypes.STRING, 
+      allowNull: false,
+      references: {
+        model: 'Users',        // table name
+        key: 'username'
+      }
+    }
   }, {
     sequelize,
     modelName: 'ActivityAnalytics',

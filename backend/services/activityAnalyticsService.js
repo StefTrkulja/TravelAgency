@@ -23,7 +23,7 @@ class ActivityAnalyticsService {
   async getAllAnalytics() {
     try {
       const analytics = await ActivityAnalytics.findAll({
-        include: [{ model: User, as: 'user' }]
+        include: [{ model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] }]
       });
       return new Result(StatusEnum.SUCCESS, 200, analytics);
     } catch (error) {
@@ -35,7 +35,7 @@ class ActivityAnalyticsService {
   async getAnalyticsById(id) {
     try {
       const analytics = await ActivityAnalytics.findByPk(id, {
-        include: [{ model: User, as: 'user' }]
+        include: [{ model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] }]
       });
       if (!analytics) {
         return new Result(StatusEnum.FAIL, 404, null, { message: 'Analytics not found' });
@@ -51,7 +51,7 @@ class ActivityAnalyticsService {
     try {
       const analytics = await ActivityAnalytics.findAll({
         where: { user_id: userId },
-        include: [{ model: User, as: 'user' }]
+        include: [{ model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] }]
       });
       if (!analytics || analytics.length === 0) {
         return new Result(StatusEnum.FAIL, 404, [], { message: 'No analytics found for this user' });

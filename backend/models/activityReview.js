@@ -5,7 +5,11 @@ module.exports = (sequelize, DataTypes) => {
   class ActivityReview extends Model {
     static associate(models) {
       // Relations
-      ActivityReview.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
+      ActivityReview.belongsTo(models.User, { 
+        foreignKey: 'userUsername', 
+        targetKey: 'username',
+        as: 'user' 
+      });
       ActivityReview.belongsTo(models.ActivityBooking, { foreignKey: 'activity_booking_id', as: 'activityBooking' });
     }
   }
@@ -21,6 +25,14 @@ module.exports = (sequelize, DataTypes) => {
     safetyRating: { type: DataTypes.INTEGER, allowNull: false },
     funRating: { type: DataTypes.INTEGER, allowNull: false },
     wouldRevisit: { type: DataTypes.BOOLEAN, allowNull: false },
+        userUsername: { 
+      type: DataTypes.STRING, 
+      allowNull: false,
+      references: {
+        model: 'Users',        // table name
+        key: 'username'
+      }
+    }
   }, {
     sequelize,
     modelName: 'ActivityReview',

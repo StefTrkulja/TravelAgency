@@ -23,7 +23,7 @@ class ActivityReviewService {
     try {
       const reviews = await ActivityReview.findAll({
         include: [
-          { model: User, as: 'user' },
+          { model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] },
           { model: ActivityBooking, as: 'activityBooking' }
         ]
       });
@@ -38,7 +38,7 @@ class ActivityReviewService {
     try {
       const review = await ActivityReview.findByPk(id, {
         include: [
-          { model: User, as: 'user' },
+          { model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] },
           { model: ActivityBooking, as: 'activityBooking' }
         ]
       });
@@ -55,7 +55,7 @@ class ActivityReviewService {
       const reviews = await ActivityReview.findAll({
         where: { user_id: userId },
         include: [
-          { model: User, as: 'user' },
+          { model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] },
           { model: ActivityBooking, as: 'activityBooking' }
         ]
       });
@@ -71,7 +71,7 @@ class ActivityReviewService {
       const reviews = await ActivityReview.findAll({
         where: { activity_booking_id: bookingId },
         include: [
-          { model: User, as: 'user' },
+          { model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] },
           { model: ActivityBooking, as: 'activityBooking' }
         ]
       });

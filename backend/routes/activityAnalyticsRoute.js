@@ -9,7 +9,10 @@ router.post('/create',
   async (req, res) => {
     if (!req.user) return res.status(401).json({ message: 'Unauthorized!' });
 
-    const payload = req.body;
+    const payload = { 
+      ...req.body,
+      userUsername: req.user.username   // ✅ force user assignment
+    };
     if (!payload.user_id) {
       return res.status(400).json({ errors: [{ message: 'user_id is required' }] });
     }

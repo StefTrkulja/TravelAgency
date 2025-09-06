@@ -11,10 +11,10 @@ router.post('/create',
       return res.status(401).json({ message: 'Unauthorized!' });
     }
 
-    const payload = req.body;
-    if (!payload.name || !payload.description || !payload.arrangement_id || !payload.user_id) {
-      return res.status(400).json({ errors: [{ message: 'Missing required fields' }] });
-    }
+    const payload = { 
+      ...req.body,
+      userUsername: req.user.username   // ✅ force user assignment
+    };
 
     const result = await ActivityService.createActivity(payload);
     return res.status(result.code).json(

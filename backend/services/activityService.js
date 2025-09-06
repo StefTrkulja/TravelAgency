@@ -1,4 +1,4 @@
-const { Activity, User, Arrangement } = require('../models');
+const { Activity, User, TravelArrangement } = require('../models');
 const { Result, StatusEnum } = require('../utils/result');
 
 class ActivityService {
@@ -16,8 +16,8 @@ class ActivityService {
     try {
       const activities = await Activity.findAll({
         include: [
-          { model: User, as: 'user', attributes: ['id', 'username', 'email'] },
-          { model: Arrangement, as: 'arrangement' }
+          { model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] },
+          { model: TravelArrangement, as: 'arrangement' }
         ]
       });
       return new Result(StatusEnum.SUCCESS, 200, activities);
@@ -31,8 +31,8 @@ class ActivityService {
     try {
       const activity = await Activity.findByPk(id, {
         include: [
-          { model: User, as: 'user', attributes: ['id', 'username', 'email'] },
-          { model: Arrangement, as: 'arrangement' }
+          { model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] },
+          { model: TravelArrangement, as: 'arrangement' }
         ]
       });
 
@@ -52,15 +52,12 @@ class ActivityService {
       const activities = await Activity.findAll({
         where: { arrangement_id: arrangementId },
         include: [
-          { model: User, as: 'user', attributes: ['id', 'username', 'email'] },
-          { model: Arrangement, as: 'arrangement' }
+          { model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] },
+          { model: TravelArrangement, as: 'arrangement' }
         ]
       });
 
-      if (!activities || activities.length === 0) {
-        return new Result(StatusEnum.FAIL, 404, [], { message: 'No activities found for this arrangement' });
-      }
-
+      // Always return 200, even if empty
       return new Result(StatusEnum.SUCCESS, 200, activities);
     } catch (error) {
       console.error("Error fetching activities by arrangementId:", error);

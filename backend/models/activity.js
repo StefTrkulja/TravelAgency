@@ -2,15 +2,22 @@
 const { Model } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
-  // ENUM definitions
-  const STATUS = ['ACTIVE', 'INACTIVE']; 
-  const ACTIVITY_AGE_GROUP = ['KIDS', 'TEENS', 'ADULTS', 'ALL']; 
+  const STATUS = ['ACTIVE', 'INACTIVE'];
+  const ACTIVITY_AGE_GROUP = ['KIDS', 'TEENS', 'ADULTS', 'ALL'];
   const SEASON = ['SPRING', 'SUMMER', 'AUTUMN', 'WINTER', 'ALL'];
 
   class Activity extends Model {
     static associate(models) {
-      Activity.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
-      Activity.belongsTo(models.TravelArrangement, { foreignKey: 'arrangement_id', as: 'arrangement' });
+      Activity.belongsTo(models.User, { 
+        foreignKey: 'userUsername', 
+        targetKey: 'username',
+        as: 'user' 
+      });
+
+      Activity.belongsTo(models.TravelArrangement, { 
+        foreignKey: 'arrangement_id', 
+        as: 'arrangement' 
+      });
     }
   }
 
@@ -31,7 +38,31 @@ module.exports = (sequelize, DataTypes) => {
     price: { type: DataTypes.DOUBLE, allowNull: false },
     lengthInMin: { type: DataTypes.DOUBLE, allowNull: false },
     isPremiumOption: { type: DataTypes.BOOLEAN, allowNull: false },
-    value: { type: DataTypes.FLOAT, allowNull: false },
+    value: { 
+  type: DataTypes.FLOAT, 
+  allowNull: false, 
+  defaultValue: 5  
+},
+
+    
+    userUsername: { 
+      type: DataTypes.STRING, 
+      allowNull: false,
+      references: {
+        model: 'Users',        // table name
+        key: 'username'
+      }
+    },
+
+    // arrangement_id already exists
+    arrangement_id: { 
+      type: DataTypes.BIGINT, 
+      allowNull: false,
+      references: {
+        model: 'TravelArrangements', // match your table name
+        key: 'id'
+      }
+    }
   }, {
     sequelize,
     modelName: 'Activity',

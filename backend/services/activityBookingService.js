@@ -1,4 +1,4 @@
-const { ActivityBooking, User, ActivitySchedule, ArrangementBooking } = require('../models');
+const { ActivityBooking, User, ActivitySchedule, Booking } = require('../models');
 const { Result, StatusEnum } = require('../utils/result');
 
 class ActivityBookingService {
@@ -11,7 +11,7 @@ class ActivityBookingService {
       const schedule = await ActivitySchedule.findByPk(payload.activity_schedule_id);
       if (!schedule) return new Result(StatusEnum.FAIL, 400, null, { message: 'Invalid activity_schedule_id' });
 
-      const arrangementBooking = await ArrangementBooking.findByPk(payload.arrangement_booking_id);
+      const arrangementBooking = await Booking.findByPk(payload.arrangement_booking_id);
       if (!arrangementBooking) return new Result(StatusEnum.FAIL, 400, null, { message: 'Invalid arrangement_booking_id' });
 
       const booking = await ActivityBooking.create(payload);
@@ -26,9 +26,9 @@ class ActivityBookingService {
     try {
       const bookings = await ActivityBooking.findAll({
         include: [
-          { model: User, as: 'user' },
+          { model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] },
           { model: ActivitySchedule, as: 'activitySchedule' },
-          { model: ArrangementBooking, as: 'arrangementBooking' }
+          { model: Booking, as: 'arrangementBooking' }
         ]
       });
       return new Result(StatusEnum.SUCCESS, 200, bookings);
@@ -42,9 +42,9 @@ class ActivityBookingService {
     try {
       const booking = await ActivityBooking.findByPk(id, {
         include: [
-          { model: User, as: 'user' },
+          { model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] },
           { model: ActivitySchedule, as: 'activitySchedule' },
-          { model: ArrangementBooking, as: 'arrangementBooking' }
+          { model: Booking, as: 'arrangementBooking' }
         ]
       });
 
@@ -62,9 +62,9 @@ class ActivityBookingService {
       const bookings = await ActivityBooking.findAll({
         where: { user_id: userId },
         include: [
-          { model: User, as: 'user' },
+          { model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] },
           { model: ActivitySchedule, as: 'activitySchedule' },
-          { model: ArrangementBooking, as: 'arrangementBooking' }
+          { model: Booking, as: 'arrangementBooking' }
         ]
       });
       return new Result(StatusEnum.SUCCESS, 200, bookings);
@@ -79,9 +79,9 @@ class ActivityBookingService {
       const bookings = await ActivityBooking.findAll({
         where: { arrangement_booking_id: arrangementBookingId },
         include: [
-          { model: User, as: 'user' },
+          { model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] },
           { model: ActivitySchedule, as: 'activitySchedule' },
-          { model: ArrangementBooking, as: 'arrangementBooking' }
+          { model: Booking, as: 'arrangementBooking' }
         ]
       });
       return new Result(StatusEnum.SUCCESS, 200, bookings);
@@ -98,7 +98,7 @@ class ActivityBookingService {
         include: [
           { model: User, as: 'user' },
           { model: ActivitySchedule, as: 'activitySchedule' },
-          { model: ArrangementBooking, as: 'arrangementBooking' }
+          { model: Booking, as: 'arrangementBooking' }
         ]
       });
       return new Result(StatusEnum.SUCCESS, 200, bookings);

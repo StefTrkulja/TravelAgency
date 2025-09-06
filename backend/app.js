@@ -42,12 +42,12 @@ app.get('/test', (req, res) => {
 });
 
 
-app.use('/activity', activityRoute);
-app.use('/activity/schedules', scheduleRoute);
-app.use('/activity/bookings', bookingRoute);
-app.use('/activity/participants', participantRoute);
-app.use('/activity/reviews', reviewRoute);
-app.use('/activity/analytics', analyticsRoute);
+app.use('/api/activities', activityRoute);
+app.use('/api/activities/schedules', scheduleRoute);
+app.use('/api/activities/bookings', bookingRoute);
+app.use('/api/activities/participants', participantRoute);
+app.use('/api/activities/reviews', reviewRoute);
+app.use('/api/activities/analytics', analyticsRoute);
 app.use('/api/user', userRoute);
 // app.use('/api/post', postRoute);
 // app.use('/api/location', locationRoute);

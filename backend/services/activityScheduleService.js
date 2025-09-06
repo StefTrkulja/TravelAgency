@@ -51,25 +51,19 @@ class ActivityScheduleService {
     }
   }
 
-  async getSchedulesByActivityId(activityId) {
-    try {
-      const schedules = await ActivitySchedule.findAll({
-        where: { activity_id: activityId },
-        include: [
-          { model: Activity, as: 'activity' }
-        ]
-      });
+async getSchedulesByActivityId(activityId) {
+  try {
+    const schedules = await ActivitySchedule.findAll({
+      where: { activity_id: activityId }
+    });
 
-      if (!schedules || schedules.length === 0) {
-        return new Result(StatusEnum.FAIL, 404, [], { message: 'No schedules found for this activity' });
-      }
-
-      return new Result(StatusEnum.SUCCESS, 200, schedules);
-    } catch (error) {
-      console.error("Error fetching schedules by activityId:", error);
-      return new Result(StatusEnum.FAIL, 500, null, { message: error.message });
-    }
+    // ✅ always success, even if empty
+    return new Result(StatusEnum.SUCCESS, 200, schedules);
+  } catch (err) {
+    console.error("Error fetching schedules:", err);
+    return new Result(StatusEnum.FAIL, 500, null, { message: err.message });
   }
+}
 
   async updateSchedule(id, updates) {
     try {
