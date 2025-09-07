@@ -23,39 +23,58 @@
     <!-- Activities -->
     <h3 class="text-h6 mb-3">Activities</h3>
     <v-row>
-      <v-col
-        v-for="a in visibleActivities"
-        :key="a.id"
-        cols="12" sm="6"
-      >
-        <v-card variant="outlined" class="pa-3">
-          <v-img
-            src="https://via.placeholder.com/240x120.png?text=Activity"
-            alt="Activity"
-            height="120"
-          />
-          <div class="mt-3 text-subtitle-1 font-weight-bold">{{ a.name }}</div>
-          <div class="text-body-2 mb-2">{{ a.description }}</div>
-<v-select
-  v-model="selectedSchedule[a.id]"
-  :items="schedules[a.id] || []"
-  item-title="label"
-  item-value="id"
-  label="Timeslot"
-/>
+<v-col
+  v-for="a in visibleActivities"
+  :key="a.id"
+  cols="12" sm="6"
+>
+  <v-card variant="outlined" class="pa-3">
+    <!-- Activity image -->
+    <v-img
+      v-if="a.imagePath"
+      :src="`http://localhost:3000/${a.imagePath}`"
+      alt="Activity image"
+      height="160"
+      class="rounded mb-3"
+      cover
+    />
+    <v-img
+      v-else
+      src="https://via.placeholder.com/240x120.png?text=No+Image"
+      alt="No image available"
+      height="160"
+      class="rounded mb-3"
+      cover
+    />
 
-<!-- Show remaining only if a schedule is selected -->
-<div v-if="selectedSchedule[a.id]" class="text-caption mb-2">
-  Remaining spots:
-  {{
-    (schedules[a.id].find(s => s.id === selectedSchedule[a.id])?.remaining) ?? 'N/A'
-  }}
-</div>
-          <v-btn color="primary" class="mt-2" type="button" @click="openBookingDialog(a)">
-  Book now
-</v-btn>
-        </v-card>
-      </v-col>
+    <!-- Info -->
+    <div class="text-subtitle-1 font-weight-bold">{{ a.name }}</div>
+    <div class="text-body-2 mb-2">{{ a.description }}</div>
+
+    <!-- Timeslot dropdown -->
+    <v-select
+      v-model="selectedSchedule[a.id]"
+      :items="schedules[a.id] || []"
+      item-title="label"
+      item-value="id"
+      label="Timeslot"
+    />
+
+    <!-- Show remaining only if a schedule is selected -->
+    <div v-if="selectedSchedule[a.id]" class="text-caption mb-2">
+      Remaining spots:
+      {{
+        (schedules[a.id].find(s => s.id === selectedSchedule[a.id])?.remaining) ?? 'N/A'
+      }}
+    </div>
+
+    <!-- Book button -->
+    <v-btn color="primary" class="mt-2" type="button" @click="openBookingDialog(a)">
+      Book now
+    </v-btn>
+  </v-card>
+</v-col>
+
     </v-row>
     <div v-if="activities.length > 2" class="text-center mb-6">
       <v-btn variant="tonal" @click="showAll = !showAll">

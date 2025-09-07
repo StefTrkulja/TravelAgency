@@ -9,36 +9,58 @@
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
     <v-progress-linear v-if="loading" indeterminate class="mb-4" />
+    <!-- Activity Cards -->
+<v-card
+  v-for="a in activities"
+  :key="a.id"
+  class="mb-4"
+  variant="outlined"
+>
+  <v-card-text>
+    <v-row no-gutters align="center">
+      <!-- Image -->
+      <v-col cols="12" md="3" class="d-flex justify-center">
+        <v-img
+          v-if="a.imagePath"
+          :src="`http://localhost:3000/${a.imagePath}`"
+          alt="Activity image"
+          max-width="220"
+          aspect-ratio="4/3"
+          class="rounded"
+          cover
+        />
+      </v-col>
 
-    <v-card v-for="a in activities" :key="a.id" class="mb-4" variant="outlined">
-      <v-card-text>
-        <div class="d-flex align-start justify-space-between flex-wrap">
-          <div class="mr-6">
-            <div class="text-subtitle-1 font-weight-bold">{{ a.name }}</div>
-            <div class="text-body-2 mb-2">{{ a.description }}</div>
-            <div class="text-body-2">
-              <strong>Price:</strong> {{ a.price }} |
-              <strong>Status:</strong> {{ a.status }} |
-              <strong>Max:</strong> {{ a.maxCapacity }}
-            </div>
-          </div>
-            <!-- Operator actions -->
-            <div v-if="store.role === 'operator'" class="d-flex ga-2">
-            <v-btn icon="mdi-pencil" variant="tonal" @click="openEditDialog(a)" />
-            <v-btn icon="mdi-delete" variant="tonal" color="error" @click="confirmDelete(a)" />
-            <v-btn variant="flat" @click="goToSchedules(a.id)">Add Schedule</v-btn>
-            </div>
-
-            <!-- Manager actions -->
-            <div v-else-if="store.role === 'manager'" class="d-flex flex-column ga-2">
-            <v-btn variant="flat" @click="openAnalyticsDialog(a.id)">Analytics</v-btn>
-            <v-btn variant="flat">Increase Value</v-btn>
-            <v-btn variant="flat" @click="goToReviews(a.id)">See Reviews</v-btn>
-            <v-btn variant="flat" @click="goToCustomers(a.id)">Customers</v-btn>
-            </div>
+      <!-- Info -->
+      <v-col cols="12" md="6" class="px-4">
+        <div class="text-subtitle-1 font-weight-bold">{{ a.name }}</div>
+        <div class="text-body-2 mb-2">{{ a.description }}</div>
+        <div class="text-body-2">
+          <strong>Price:</strong> {{ a.price }} |
+          <strong>Status:</strong> {{ a.status }} |
+          <strong>Max:</strong> {{ a.maxCapacity }}
         </div>
-      </v-card-text>
-    </v-card>
+      </v-col>
+
+      <!-- Actions -->
+      <v-col cols="12" md="3" class="d-flex justify-end">
+        <div v-if="store.role === 'operator'" class="d-flex ga-2">
+          <v-btn icon="mdi-pencil" variant="tonal" @click="openEditDialog(a)" />
+          <v-btn icon="mdi-delete" variant="tonal" color="error" @click="confirmDelete(a)" />
+          <v-btn variant="flat" @click="goToSchedules(a.id)">Add Schedule</v-btn>
+        </div>
+
+        <div v-else-if="store.role === 'manager'" class="d-flex flex-column ga-2">
+          <v-btn variant="flat" @click="openAnalyticsDialog(a.id)">Analytics</v-btn>
+          <v-btn variant="flat">Increase Value</v-btn>
+          <v-btn variant="flat" @click="goToReviews(a.id)">See Reviews</v-btn>
+          <v-btn variant="flat" @click="goToCustomers(a.id)">Customers</v-btn>
+        </div>
+      </v-col>
+    </v-row>
+  </v-card-text>
+</v-card>
+
 
     <!-- Analytics Dialog -->
     <v-dialog v-model="analyticsDialog.open" max-width="500">
@@ -77,6 +99,13 @@
           <v-text-field v-model.number="form.difficulty" label="Difficulty (1-5)" type="number" />
           <v-select v-model="form.targetAgeGroup" :items="ageGroups" label="Target Age Group" />
           <v-select v-model="form.season" :items="seasonOptions" label="Season" />
+          <v-file-input
+  v-model="form.imageFile"
+  label="Attach Image"
+  accept="image/*"
+  prepend-icon="mdi-image"
+/>
+
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -151,7 +180,8 @@ const form = reactive({
   targetAgeGroup: 'ALL',
   season: 'ALL',
   arrangement_id: null,
-  user_id: null, // replace with your auth mapping when ready
+  user_id: null, 
+  imageFile: null,
 });
 
 function openAnalyticsDialog(activityId) {
@@ -240,13 +270,29 @@ function openEditDialog(item) {
 
 async function saveActivity() {
   try {
+    const fd = new FormData();
+    for (const key in form) {
+      if (form[key] !== null && form[key] !== undefined) {
+        if (key === 'imageFile') {
+          if (form.imageFile) fd.append('image', form.imageFile);
+        } else {
+          fd.append(key, form[key]);
+        }
+      }
+    }
+
     if (dialog.mode === 'create') {
-      await axios.post('/activities/create', form); // -> /api/activities/create
+      await axios.post('/activities/create', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       snackbar.msg = 'Activity created';
     } else {
-      await axios.put(`/activities/${dialog.editingId}`, form); // -> /api/activities/:id
+      await axios.put(`/activities/${dialog.editingId}`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       snackbar.msg = 'Activity updated';
     }
+
     snackbar.open = true;
     dialog.open = false;
     await fetchActivities();
@@ -255,6 +301,7 @@ async function saveActivity() {
     snackbar.open = true;
   }
 }
+
 
 function confirmDelete(item) {
   deleteDialog.item = item;
