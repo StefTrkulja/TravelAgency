@@ -2,18 +2,30 @@ const express = require('express');
 const router = express.Router();
 const jwtParser = require('../utils/jwtParser');
 const ActivityService = require('../services/activityService');
+const ImageService = require('../services/imageService');
+const multer = require('multer');
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Create a new activity
-router.post('/create',
+router.post(
+  '/create',
   jwtParser.extractTokenUser,
+  upload.single('image'),   
   async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ message: 'Unauthorized!' });
     }
 
-    const payload = { 
+    let path;
+    if (req.file) {
+      path = await ImageService.saveImage(req.file); 
+    }
+
+    const payload = {
       ...req.body,
-      userUsername: req.user.username   // ✅ force user assignment
+      userUsername: req.user.username,
+      imagePath: path || null,
     };
 
     const result = await ActivityService.createActivity(payload);

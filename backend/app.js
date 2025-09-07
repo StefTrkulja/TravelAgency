@@ -33,7 +33,6 @@ const analyticsRoute = require('./routes/activityAnalyticsRoute');
 const bookingRoute = require('./routes/bookingRoute');
 
 
-
 const app = express();
 
 app.use(cors({
@@ -48,6 +47,7 @@ app.get('/test', (req, res) => {
 });
 
 
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/activities', activityRoute);
 app.use('/api/activities/schedules', scheduleRoute);
 app.use('/api/activities/bookings', activityBookingRoute);
