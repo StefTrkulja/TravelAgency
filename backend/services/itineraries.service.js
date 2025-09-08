@@ -15,9 +15,8 @@ function canEditArrangement(arrangement, user) {
   return true;
 }
 
-/** Bezbedno učitavanje polaska + aranžmana, nezavisno od alias-a asocijacije */
+/** Učitaj polazak + aranžman (bez obzira na alias) */
 async function loadDepartureWithArrangement(departureId, tx) {
-  // Pokušaj sa include (ako je definisan alias as: 'arrangement')
   let dep = await Departure.findByPk(departureId, {
     include: [{ model: TravelArrangement, as: 'arrangement' }],
     transaction: tx
@@ -32,25 +31,18 @@ async function loadDepartureWithArrangement(departureId, tx) {
 }
 
 class ItinerariesService {
-  /**
-   * Kreiranje dnevnog plana za dati polazak
-   * @param {object} user - req.user
-   * @param {number} departureId
-   * @param {object} payload
-   */
+  /** Kreiraj stavku itinerera za dati polazak */
   async create(user, departureId, payload) {
     return await sequelize.transaction(async (tx) => {
       const { dep, arr } = await loadDepartureWithArrangement(departureId, tx);
-      if (!dep) return new Result(StatusEnum.FAIL, 404, null, [{ message: 'Departure not found' }]);
+      if (!dep)   return new Result(StatusEnum.FAIL, 404, null, [{ message: 'Departure not found' }]);
       if (!canEditArrangement(arr, user)) {
         return new Result(StatusEnum.FAIL, 403, null, [{ message: 'Forbidden' }]);
       }
 
-      // Minimalne validacije
       if (payload.startTime && payload.endTime && payload.startTime >= payload.endTime) {
         return new Result(StatusEnum.FAIL, 400, null, [{ message: 'startTime must be before endTime' }]);
       }
-      // Opcionalno: validacija da je payload.date u okviru dep.startDate/dep.endDate ako postoje
       if (payload.date && (dep.startDate || dep.endDate)) {
         const d = new Date(payload.date);
         if (dep.startDate && d < new Date(dep.startDate)) {
@@ -76,9 +68,6 @@ class ItinerariesService {
     });
   }
 
-  /**
-   * Dohvat jedne stavke sa aktivnostima (read je dozvoljen svima autentifikovanim)
-   */
   async get(id) {
     const it = await Itinerary.findByPk(id, {
       include: [{ model: ItineraryActivity, as: 'activities' }]
@@ -87,9 +76,6 @@ class ItinerariesService {
     return new Result(StatusEnum.OK, 200, it);
   }
 
-  /**
-   * Lista planova za polazak (read)
-   */
   async list(departureId) {
     const items = await Itinerary.findAll({
       where: { departureId },
@@ -99,12 +85,6 @@ class ItinerariesService {
     return new Result(StatusEnum.OK, 200, items);
   }
 
-  /**
-   * Izmena stavke dnevnog plana
-   * @param {object} user
-   * @param {number} id
-   * @param {object} payload
-   */
   async update(user, id, payload) {
     return await sequelize.transaction(async (tx) => {
       const it = await Itinerary.findByPk(id, { transaction: tx });
@@ -137,11 +117,6 @@ class ItinerariesService {
     });
   }
 
-  /**
-   * Brisanje dnevnog plana + aktivnosti
-   * @param {object} user
-   * @param {number} id
-   */
   async remove(user, id) {
     return await sequelize.transaction(async (tx) => {
       const it = await Itinerary.findByPk(id, { transaction: tx });

@@ -12,11 +12,22 @@
       </v-col>
 
       <v-col cols="12" md="8">
-        <v-data-table class="elevation-1"
+        <v-data-table
+          class="elevation-1"
           :headers="headers"
           :items="items"
           :items-per-page="10"
-        />
+        >
+          <template #item.actions="{ item }">
+            <v-btn
+              icon
+              color="error"
+              @click="remove(item.id)"
+            >
+              <v-icon>mdi-delete</v-icon>
+            </v-btn>
+          </template>
+        </v-data-table>
       </v-col>
     </v-row>
   </v-container>
@@ -30,7 +41,8 @@ import { ref, onMounted } from 'vue'
 const headers = [
   { title: 'ID', key: 'id' },
   { title: 'Naziv', key: 'name' },
-  { title: 'Država', key: 'countryName' } // lep prikaz imena države
+  { title: 'Država', key: 'countryName' },
+  { title: 'Akcije', key: 'actions', sortable: false }
 ]
 
 const items = ref([])
@@ -40,10 +52,9 @@ const saving = ref(false)
 
 const load = async () => {
   const { data } = await axios.get('/destinations')
-  // backend vraća country kao objekat (include) -> prikaži lepo ime
   items.value = data.map(d => ({
     ...d,
-    countryName: d.country?.name ?? d.country ?? '' // ako je string, uzmi ga
+    countryName: d.country?.name ?? d.country ?? ''
   }))
 }
 
@@ -57,7 +68,7 @@ const save = async () => {
   try {
     await axios.post('/destinations', {
       ...form.value,
-      createdByUsername: store.username // ★ obavezno zbog NOT NULL
+      createdByUsername: store.username
     })
     form.value = { name: '', country: '' }
     await load()
@@ -65,6 +76,16 @@ const save = async () => {
     error.value = e?.response?.data?.error || 'Greška pri čuvanju'
   } finally {
     saving.value = false
+  }
+}
+
+const remove = async (id) => {
+  if (!confirm('Da li ste sigurni da želite da obrišete destinaciju?')) return
+  try {
+    await axios.delete(`/destinations/${id}`)
+    await load()
+  } catch (e) {
+    error.value = e?.response?.data?.error || 'Greška pri brisanju'
   }
 }
 

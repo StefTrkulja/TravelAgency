@@ -1,104 +1,267 @@
 <template>
-<v-container>
-<v-row>
-<v-col cols="12" md="8">
-<v-card class="mb-4" v-if="arr">
-<v-card-title>
-{{ arr.title }}
-<v-chip class="ml-3" color="primary" variant="tonal">{{ arr.status }}</v-chip>
-</v-card-title>
-<v-card-text>
-<div><strong>Destinacija:</strong> {{ arr.destination?.name }}</div>
-<div><strong>Tip:</strong> {{ arr.type }}</div>
-<div><strong>Prevoz:</strong> {{ arr.transportType }} | <strong>Smeštaj:</strong> {{ arr.accommodationType }}</div>
-<div class="mt-2">{{ arr.summary }}</div>
-</v-card-text>
-<v-card-actions>
-<v-btn :to="`/op/departures/${arr.id}`" prepend-icon="mdi-calendar">Polasci/Itinerer</v-btn>
-</v-card-actions>
-</v-card>
+  <v-container>
+    <div class="d-flex align-center justify-space-between mb-3">
+      <h2>Aranžman #{{ id }}</h2>
+      <v-chip :color="statusColor(arr?.status)" variant="flat">{{ arr?.status || '—' }}</v-chip>
+    </div>
 
-<v-card>
-<v-card-title>Izbor ponuda po kategorijama</v-card-title>
-<v-card-text>
-<v-row>
-<v-col cols="12" md="4">
-<v-select label="Transport ponuda" :items="offersBy('TRANSPORT')" item-title="titleOrType" item-value="id" v-model="sel.TRANSPORT" />
-</v-col>
-<v-col cols="12" md="4">
-<v-select label="Smeštaj ponuda" :items="offersBy('ACCOMMODATION')" item-title="titleOrType" item-value="id" v-model="sel.ACCOMMODATION" />
-</v-col>
-<v-col cols="12" md="4">
-<v-select label="Tura/Vodič ponuda" :items="offersBy('TOUR')" item-title="titleOrType" item-value="id" v-model="sel.TOUR" />
-</v-col>
-</v-row>
-<v-btn color="primary" @click="saveSelections">Sačuvaj izbor</v-btn>
-</v-card-text>
-</v-card>
-</v-col>
+    <!-- OSNOVNO -->
+    <v-card class="mb-4">
+      <v-card-text>
+        <v-row>
+          <v-col cols="12" md="6">
+            <div class="text-subtitle-1">Naslov</div>
+            <div class="text-body-1">{{ arr?.title || '—' }}</div>
 
-<v-col cols="12" md="4">
-<v-card>
-<v-card-title>Akcije</v-card-title>
-<v-card-text>
-<v-btn class="mb-2" block :to="'/op/inquiries'" prepend-icon="mdi-send">Pošalji upite</v-btn>
-<v-btn class="mb-2" block color="success" :disabled="arr?.status!=='READY'" @click="sendForApproval">Pošalji na odobrenje</v-btn>
-</v-card-text>
-</v-card>
+            <div class="text-subtitle-1 mt-3">Destinacija</div>
+            <div class="text-body-1">{{ arr?.destination?.name || '—' }}</div>
 
+            <div class="text-subtitle-1 mt-3">Tip</div>
+            <div class="text-body-1">{{ arr?.type || '—' }}</div>
 
-<v-card class="mt-4">
-<v-card-title>Ponude (RECEIVED)</v-card-title>
-<v-card-text>
-<v-list density="compact">
-<v-list-item v-for="o in offers" :key="o.id" :title="o.title || o.offerType" :subtitle="`status: ${o.status}`" />
-</v-list>
-</v-card-text>
-</v-card>
-</v-col>
-</v-row>
-</v-container>
+            <div class="text-subtitle-1 mt-3">Cena po osobi</div>
+            <div class="text-body-1">{{ money(arr?.basePricePerPerson, 'EUR') }}</div>
+          </v-col>
+          <v-col cols="12" md="6">
+            <div class="text-subtitle-1">Prevoz</div>
+            <div class="text-body-1">{{ arr?.transportType || '—' }}</div>
+
+            <div class="text-subtitle-1 mt-3">Smeštaj</div>
+            <div class="text-body-1">{{ arr?.accommodationType || '—' }}</div>
+
+            <div class="text-subtitle-1 mt-3">Sažetak</div>
+            <div class="text-body-2">{{ arr?.summary || '—' }}</div>
+          </v-col>
+        </v-row>
+      </v-card-text>
+    </v-card>
+
+    <!-- CHECKLIST ZA READY -->
+    <v-alert
+      v-if="missingCats.length"
+      type="error"
+      variant="tonal"
+      class="mb-4"
+    >
+      <div class="mb-2"><b>Nedostaje da bi prešlo u READY:</b></div>
+      <div class="d-flex flex-wrap ga-2">
+        <v-chip color="error" v-for="c in missingCats" :key="c">{{ c }}</v-chip>
+      </div>
+      <div class="text-caption mt-2">
+        Izaberi ponude iz liste ispod i označi ih za odgovarajuću kategoriju.
+      </div>
+    </v-alert>
+
+    <!-- IZABRANE PONUDE -->
+    <v-card class="mb-4">
+      <v-card-title class="px-4 pt-4">Izabrane ponude (po kategorijama)</v-card-title>
+      <v-card-text>
+        <v-table density="compact">
+          <thead>
+            <tr>
+              <th style="width:160px;">Kategorija</th>
+              <th>Tip / Naslov</th>
+              <th>Detalj</th>
+              <th style="width:160px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in chosenRows" :key="row.category">
+              <td><b>{{ row.category }}</b></td>
+              <td>
+                <div v-if="row.offer">
+                  <div><b>{{ row.offer.offerType }}</b> — {{ row.offer.title || '—' }}</div>
+                  <div class="text-caption">{{ money(row.offer.priceTotal, row.offer.currency) }}</div>
+                </div>
+                <div v-else class="text-error">— nije izabrano —</div>
+              </td>
+              <td>
+                <div v-if="row.offer">
+                  <div v-if="row.offer.offerType==='HOTEL'">
+                    {{ row.offer.hotelName || '—' }}, board: {{ row.offer.board || '—' }}, ★{{ row.offer.hotelStars || '—' }}
+                  </div>
+                  <div v-else-if="row.offer.offerType==='BUS' || row.offer.offerType==='AIRLINE'">
+                    {{ row.offer.transportCompany || '—' }} ({{ row.offer.transportMode || '—' }}) — {{ row.offer.fromLocation || '—' }} → {{ row.offer.toLocation || '—' }}
+                  </div>
+                  <div v-else>
+                    {{ row.offer.guideName || '—' }} / {{ row.offer.guideLanguage || '—' }} / {{ row.offer.durationHours || '—' }}h
+                  </div>
+                </div>
+              </td>
+              <td>
+                <v-menu>
+                  <template #activator="{ props }">
+                    <v-btn v-bind="props" size="x-small" variant="outlined">Promeni izbor</v-btn>
+                  </template>
+                  <v-list>
+                    <v-list-item
+                      v-for="o in offersForCategory(row.category)"
+                      :key="o.id"
+                      @click="selectOffer(row.category, o)"
+                    >
+                      <v-list-item-title>
+                        #{{o.id}} — {{o.offerType}} — {{o.title || '—'}} ({{ money(o.priceTotal, o.currency) }})
+                      </v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
+              </td>
+            </tr>
+          </tbody>
+        </v-table>
+      </v-card-text>
+    </v-card>
+
+    <!-- SVE PRISTIGLE PONUDE (za izbor) -->
+    <v-card class="mb-6">
+      <v-card-title class="px-4 pt-4">Sve pristigle ponude</v-card-title>
+      <v-card-text>
+        <v-tabs v-model="tab" bg-color="primary" dark>
+          <v-tab value="TRANSPORT">Transport</v-tab>
+          <v-tab value="ACCOMMODATION">Smeštaj</v-tab>
+          <v-tab value="TOUR">Ture/Vodič</v-tab>
+        </v-tabs>
+        <v-window v-model="tab">
+          <v-window-item value="TRANSPORT">
+            <v-data-table :headers="hTransport" :items="transportOffers">
+              <template #item.actions="{ item }">
+                <v-btn size="x-small" @click="selectOffer('TRANSPORT', item)">Izaberi kao TRANSPORT</v-btn>
+              </template>
+              <template #no-data><v-alert type="info" class="ma-4">Nema ponuda.</v-alert></template>
+            </v-data-table>
+          </v-window-item>
+          <v-window-item value="ACCOMMODATION">
+            <v-data-table :headers="hHotel" :items="hotelOffers">
+              <template #item.actions="{ item }">
+                <v-btn size="x-small" @click="selectOffer('ACCOMMODATION', item)">Izaberi kao SMEŠTAJ</v-btn>
+              </template>
+              <template #no-data><v-alert type="info" class="ma-4">Nema ponuda.</v-alert></template>
+            </v-data-table>
+          </v-window-item>
+          <v-window-item value="TOUR">
+            <v-data-table :headers="hTour" :items="tourOffers">
+              <template #item.actions="{ item }">
+                <v-btn size="x-small" @click="selectOffer('TOUR', item)">Izaberi kao TURU</v-btn>
+              </template>
+              <template #no-data><v-alert type="info" class="ma-4">Nema ponuda.</v-alert></template>
+            </v-data-table>
+          </v-window-item>
+        </v-window>
+      </v-card-text>
+    </v-card>
+
+    <!-- AKCIJE DOLJE -->
+    <div class="d-flex align-center ga-2">
+      <v-btn color="primary" :disabled="arr?.status!=='READY'" @click="sendReady">
+        Pošalji na odobrenje
+      </v-btn>
+      <v-chip v-if="arr?.status!=='READY'" color="error" variant="tonal">
+        Najpre popuni sve obavezne kategorije (vidi checklist gore).
+      </v-chip>
+    </div>
+
+    <v-alert v-if="err" type="error" class="mt-3">{{ err }}</v-alert>
+    <v-alert v-if="ok" type="success" class="mt-3">{{ ok }}</v-alert>
+  </v-container>
 </template>
 
 <script setup>
-import axios from '@/utils/axiosInstance'
-import { ref, onMounted, computed } from 'vue'
+import api from '@/utils/axiosInstance'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-
 
 const route = useRoute()
 const id = Number(route.params.id)
+
 const arr = ref(null)
-const offers = ref([])
-const sel = ref({ TRANSPORT:null, ACCOMMODATION:null, TOUR:null })
+const offers = ref([])    // uvek niz
+const err = ref('')
+const ok = ref('')
+const tab = ref('TRANSPORT')
 
+function asArray(x) { return Array.isArray(x) ? x : [] }
 
-const titleOrType = (o) => o.title || o.offerType
-const offersBy = (cat) => offers.value
-.filter(o => (cat==='TRANSPORT' ? ['BUS','AIRLINE'].includes(o.offerType) : cat==='ACCOMMODATION' ? ['HOTEL'].includes(o.offerType) : ['TOUR','GUIDE'].includes(o.offerType)))
-.map(o => ({ ...o, titleOrType: titleOrType(o) }))
+function statusColor(s) {
+  switch (s) {
+    case 'DRAFT': return 'grey'
+    case 'READY': return 'blue'
+    case 'PENDING': return 'orange'
+    case 'ACTIVE': return 'green'
+    case 'CHANGES_REQUESTED': return 'red'
+    default: return 'grey'
+  }
+}
+function money(v, c='EUR') { const n = Number(v ?? 0); return `${n.toFixed(2)} ${c}` }
 
+async function loadArrangement() {
+  try { const { data } = await api.get(`/arrangements/${id}`); arr.value = data || null }
+  catch { err.value = 'Greška pri učitavanju aranžmana' }
+}
+async function loadOffers() {
+  try {
+    const { data } = await api.get(`/offers/for-arrangement/${id}`, { params: { scope: 'all' } })
+    offers.value = Array.isArray(data) ? data : []
+  } catch (e) {
+    const d = e?.response?.data
+    err.value = d?.error || 'Greška pri učitavanju ponuda'
+    offers.value = []
+  }
+}
+onMounted(async () => { await Promise.all([loadArrangement(), loadOffers()]) })
 
-onMounted(async () => {
-const { data } = await axios.get(`/arrangements/${id}`)
-arr.value = data
-const { data: off } = await axios.get(`/offers/for-arrangement/${id}`)
-offers.value = off
+// selections / checklist
+const selectionsByCat = computed(() => {
+  const map = {}; for (const s of asArray(arr.value?.selections)) map[s.category] = s.offer || null; return map
 })
+const requiredCats = computed(() =>
+  (arr.value?.type === 'DAY_TRIP') ? ['TRANSPORT','TOUR'] : ['TRANSPORT','ACCOMMODATION','TOUR']
+)
+const missingCats = computed(() => requiredCats.value.filter(c => !selectionsByCat.value[c]))
+const chosenRows = computed(() =>
+  ['TRANSPORT','ACCOMMODATION','TOUR'].map(cat => ({ category: cat, offer: selectionsByCat.value[cat] || null }))
+)
 
-const saveSelections = async () => {
-for (const cat of Object.keys(sel.value)) {
-if (!sel.value[cat]) continue
-await axios.post(`/arrangements/${id}/select-offer`, { category: cat, offerId: sel.value[cat] })
+// offers split
+const hotelOffers = computed(() => offers.value.filter(o => o.offerType === 'HOTEL'))
+const transportOffers = computed(() => offers.value.filter(o => o.offerType === 'BUS' || o.offerType === 'AIRLINE'))
+const tourOffers = computed(() => offers.value.filter(o => ['GUIDE','TOUR','OTHER'].includes(o.offerType)))
+function offersForCategory(c) { if (c==='ACCOMMODATION') return hotelOffers.value; if (c==='TRANSPORT') return transportOffers.value; return tourOffers.value }
+
+// actions
+async function selectOffer(category, offer) {
+  try {
+    await api.post(`/arrangements/${id}/select-offer`, { category, offerId: offer.id })
+    ok.value = `Izabrano: ${category} → #${offer.id}`
+    await loadArrangement()
+  } catch (e) {
+    const d = e?.response?.data; err.value = d?.error || d?.errors?.[0]?.message || 'Greška pri izboru ponude'
+  }
 }
-const { data } = await axios.get(`/arrangements/${id}`)
-arr.value = data
+async function sendReady() {
+  try {
+    await api.post('/approvals/send', { arrangementId: id })
+    ok.value = 'Poslato na odobrenje.'
+    await loadArrangement()
+  } catch (e) {
+    const d = e?.response?.data; err.value = d?.error || d?.errors?.[0]?.message || 'Greška pri slanju na odobrenje'
+  }
 }
 
-
-const sendForApproval = async () => {
-await axios.post('/approvals/send', { arrangementId: id })
-const { data } = await axios.get(`/arrangements/${id}`)
-arr.value = data
-}
+// tables
+const hTransport = [
+  { title: 'ID', key: 'id', width: 80 }, { title: 'Tip', key: 'offerType', width: 120 },
+  { title: 'Kompanija', key: 'transportCompany' }, { title: 'Ruta', key: 'toLocation' },
+  { title: 'Cena', key: 'priceTotal', width: 140 }, { title: '', key: 'actions', sortable: false, width: 200 }
+]
+const hHotel = [
+  { title: 'ID', key: 'id', width: 80 }, { title: 'Hotel', key: 'hotelName' },
+  { title: 'Board', key: 'board', width: 120 }, { title: 'Zvezdice', key: 'hotelStars', width: 120 },
+  { title: 'Cena', key: 'priceTotal', width: 140 }, { title: '', key: 'actions', sortable: false, width: 200 }
+]
+const hTour = [
+  { title: 'ID', key: 'id', width: 80 }, { title: 'Naslov', key: 'title' },
+  { title: 'Vodič', key: 'guideName' }, { title: 'Jezik', key: 'guideLanguage', width: 120 },
+  { title: 'Trajanje (h)', key: 'durationHours', width: 140 }, { title: 'Cena', key: 'priceTotal', width: 140 },
+  { title: '', key: 'actions', sortable: false, width: 200 }
+]
 </script>

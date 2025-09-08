@@ -13,6 +13,7 @@
                   label="Dan"
                   type="number"
                   v-model.number="form.dayNo"
+                  :disabled="dayTrip"
                   :rules="[r.required, r.positive]"
                   @change="suggestDate"
                 />
@@ -22,6 +23,7 @@
                   label="Datum"
                   type="date"
                   v-model="form.date"
+                  :disabled="dayTrip"
                   :rules="[r.required]"
                 />
               </v-col>
@@ -45,18 +47,19 @@
 
               <!-- Aktivnost iz biblioteke – auto-popunjava polja -->
               <v-col cols="12">
-                <v-autocomplete
-                  label="Aktivnost (opciono)"
-                  :items="activityOptions"
-                  item-title="name"
-                  item-value="id"
-                  v-model="selectedActivityId"
-                  :loading="loadingActs"
-                  @focus="loadActivities"
-                  clearable
-                  hint="Izaberi da bi se popunili naslov/opis/lokacija"
-                  persistent-hint
-                />
+             <v-autocomplete
+                label="Aktivnost (opciono)"
+                :items="activityOptions"
+                :item-title="itemLabel"
+                item-value="id"
+                v-model="selectedActivityId"
+                :loading="loadingActs"
+                @focus="loadActivities"
+                clearable
+                hint="Izaberi da bi se popunili naslov/opis/lokacija"
+                persistent-hint
+              />
+
               </v-col>
 
               <v-col cols="12">
@@ -100,7 +103,6 @@
               <v-btn color="primary" :disabled="!valid" :loading="saving" @click="create">
                 Dodaj stavku
               </v-btn>
-              <v-btn variant="outlined" @click="copyPrevious">Kopiraj prethodno</v-btn>
               <v-btn variant="text" @click="resetForm">Očisti</v-btn>
             </div>
           </v-form>
@@ -162,10 +164,9 @@
     </v-dialog>
   </v-container>
 </template>
-
 <script setup>
 import api from '@/utils/axiosInstance'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watchEffect, computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -181,12 +182,12 @@ const headers = [
   { title: '', key: 'actions', sortable: false, width: 100 }
 ]
 
-const items = ref([])
+const items   = ref([])
 const loading = ref(false)
-const saving = ref(false)
-const valid  = ref(false)
-const ok     = ref('')
-const error  = ref('')
+const saving  = ref(false)
+const valid   = ref(false)
+const ok      = ref('')
+const error   = ref('')
 
 // forma
 const form = ref({
@@ -205,42 +206,64 @@ const r = {
   min3: v => !v || v.length >= 3 || 'Min 3 slova',
   positive: v => (Number(v) > 0) || 'Mora biti > 0'
 }
-const timeOrderRule = () =>
-  !form.value.startTime || !form.value.endTime ||
-  form.value.startTime < form.value.endTime || 'Vreme OD mora biti pre DO'
 
-const timeOrderRuleEdit = () =>
-  !edit.value.startTime || !edit.value.endTime ||
-  edit.value.startTime < edit.value.endTime || 'Vreme OD mora biti pre DO'
+// >>> OVO JE BILO POGREŠNO – sada je ispravno:
+const timeOrderRule = () => {
+  const s = form.value.startTime
+  const e = form.value.endTime
+  if (!s || !e) return true                // ne greši dok oba nisu popunjena
+  return s < e || 'Vreme OD mora biti pre DO'
+}
+
+const timeOrderRuleEdit = () => {
+  const s = edit.value.startTime
+  const e = edit.value.endTime
+  if (!s || !e) return true
+  return s < e || 'Vreme OD mora biti pre DO'
+}
 
 // aktivnosti (biblioteka)
-const activityOptions = ref([])
+const activityOptions   = ref([])
 const selectedActivityId = ref(null)
 const loadingActs = ref(false)
+
+// lepši label u slučaju da backend vraća `title` ili `activityTitle`
+const itemLabel = (it) => it?.name || it?.title || it?.activityTitle || `Aktivnost #${it?.id ?? ''}`
 
 async function loadActivities () {
   if (activityOptions.value.length) return
   loadingActs.value = true
   try {
-    const { data } = await api.get('/activities')
-    activityOptions.value = data
-  } catch (_) { /* ignore */ } finally { loadingActs.value = false }
+    const { data } = await api.get('/activities')   // ako nema rute – ostaje prazno (opciono)
+    activityOptions.value = Array.isArray(data) ? data : []
+  } catch (_) {
+    activityOptions.value = []                      // fallback bez greške u UI
+  } finally {
+    loadingActs.value = false
+  }
 }
 
-// kada izabere aktivnost – popuni naslov/opis/lokaciju
+// kada izabere aktivnost – popuni naslov/opis/lokaciju (samo ako polja nisu već uneta)
 watchEffect(() => {
   const id = selectedActivityId.value
   if (!id) return
   const a = activityOptions.value.find(x => x.id === id)
   if (a) {
-    if (!form.value.title) form.value.title = a.name || ''
+    if (!form.value.title)       form.value.title       = a.name || a.title || a.activityTitle || ''
     if (!form.value.description) form.value.description = a.description || ''
-    if (!form.value.location) form.value.location = a.location || ''
+    if (!form.value.location)    form.value.location    = a.location || ''
   }
 })
 
-// zahvat polaska (samo zbog default datuma)
+// polazak
 const departure = ref(null)
+const dayTrip = computed(() =>
+  !!departure.value &&
+  departure.value.startDate &&
+  departure.value.endDate &&
+  departure.value.startDate === departure.value.endDate
+)
+
 async function loadDeparture() {
   try {
     const { data } = await api.get(`/departures/${departureId}`)
@@ -248,11 +271,12 @@ async function loadDeparture() {
   } catch (_) { /* ignore */ }
 }
 
-// predlog datuma na osnovu dana (polazak + (dayNo-1))
+// predlog datuma na osnovu dana (startDate + (dayNo-1))
+// >>> imala si check na nepostojeći `dateStart` – uklonjeno.
 function suggestDate() {
-  if (!departure.value?.dateStart) return
+  if (!departure.value?.startDate) return
   try {
-    const base = new Date(departure.value.dateStart)
+    const base = new Date(departure.value.startDate)
     const d = new Date(base)
     d.setDate(base.getDate() + Number(form.value.dayNo || 1) - 1)
     form.value.date = d.toISOString().slice(0, 10)
@@ -273,20 +297,6 @@ function resetForm() {
   ok.value = ''; error.value = ''
 }
 
-function copyPrevious() {
-  if (!items.value.length) return
-  const last = items.value[items.value.length - 1]
-  form.value = {
-    dayNo: last.dayNo,
-    date: last.date,
-    startTime: last.startTime,
-    endTime: last.endTime,
-    location: last.location || '',
-    title: last.title || '',
-    description: last.description || ''
-  }
-}
-
 async function create () {
   error.value = ''; ok.value = ''
   saving.value = true
@@ -295,6 +305,11 @@ async function create () {
     ok.value = 'Stavka dodata.'
     resetForm()
     await load()
+    if (dayTrip.value && departure.value?.startDate) {
+      // kod jednodnevnog – odmah pripremi opet isti datum i dan 1
+      form.value.dayNo = 1
+      form.value.date  = departure.value.startDate
+    }
   } catch (e) {
     const d = e?.response?.data
     error.value = d?.error || d?.errors?.[0]?.message || e.message || 'Greška'
@@ -302,8 +317,8 @@ async function create () {
 }
 
 // edit / delete
-const editDlg = ref(false)
-const edit = ref({})
+const editDlg   = ref(false)
+const edit      = ref({})
 const editValid = ref(false)
 
 function openEdit(item) {
@@ -327,5 +342,13 @@ async function remove(item) {
 
 onMounted(async () => {
   await Promise.all([loadDeparture(), load()])
+  // dayTrip: zakucaj dan i datum čim učita polazak
+  if (dayTrip.value && departure.value?.startDate) {
+    form.value.dayNo = 1
+    form.value.date  = departure.value.startDate
+  } else {
+    // ako nije day trip, predloži datum za dan 1
+    suggestDate()
+  }
 })
 </script>

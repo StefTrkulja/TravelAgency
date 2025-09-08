@@ -93,13 +93,15 @@ const err = ref('')
 const tab = ref('HOTEL')
 const rows = ref([])
 
+// grupe po tipu ponude
 const hotels = computed(() => rows.value.filter(r => r.offerType === 'HOTEL'))
 const transport = computed(() => rows.value.filter(r => r.offerType === 'BUS' || r.offerType === 'AIRLINE'))
 const tours = computed(() => rows.value.filter(r => r.offerType === 'GUIDE' || r.offerType === 'OTHER'))
 
+// izbori
 const picks = ref({ hotel: null, transport: null, tour: null })
 
-// tabele
+// kolone
 const hHotel = [
   { title: 'Naslov', key: 'title' },
   { title: 'Cena', key: 'priceTotal' },
@@ -122,17 +124,25 @@ const hTour = [
   { title: '', key: 'actions', sortable: false, width: 120 }
 ]
 
+// dozvola dugmeta
 const canProceed = computed(() => !!(picks.value.hotel || picks.value.transport || picks.value.tour))
-const nextLink = computed(() => {
-  const ids = [picks.value.hotel?.id, picks.value.transport?.id, picks.value.tour?.id]
+
+// ✔ formiraj listu izabranih ID-jeva
+const selectedIds = computed(() =>
+  [picks.value.hotel?.id, picks.value.transport?.id, picks.value.tour?.id]
     .filter(Boolean)
     .join(',')
-  return `/op/arrangements/new?offerIds=${ids}&inquiryId=${inquiryId}`
-})
+)
 
+// ✔ router-link objekat (po imenu rute), sa query paramima
+const nextLink = computed(() => ({
+  name: 'op-arrangements-new',
+  query: { offerIds: selectedIds.value, inquiryId }
+}))
+
+// učitavanje ponuda za upit
 async function load() {
   try {
-    // očekivani backend: GET /api/offers/by-inquiry/:inquiryId
     const { data } = await api.get(`/offers/inquiries/${inquiryId}/offers`)
     rows.value = data
   } catch (e) {

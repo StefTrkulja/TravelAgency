@@ -171,15 +171,35 @@ async function supplierSubmitOffer(user, body = {}) {
 /**
  * Kompatibilno: OPERATOR/ADMIN – sve ponude za konkretan aranžman (ako taj koncept i dalje postoji)
  */
-async function listOffersForArrangement(user, arrangementId) {
-  if (!arrangementId) throw new Error('arrangementId is required');
-  if (!['OPERATOR', 'ADMIN'].includes(user.role)) throw new Error('Forbidden');
+// Vraća ponude VEĆ VEZANE uz aranžman + (opciono) i ponude pristigle na upite za taj aranžman.
+async function listOffersForArrangement(user, arrangementId, { includeInquiryOffers = false } = {}) {
+  const a = await TravelArrangement.findByPk(arrangementId);
+  if (!a) throw new Error('Arrangement not found');
 
-  const rows = await SupplierOffer.findAll({
-    where: { arrangementId: Number(arrangementId) },
-    order: [['createdAt', 'DESC']],
+  // dozvole
+  if (user.role !== 'ADMIN' && user.role !== 'OPERATOR') throw new Error('Forbidden');
+  if (user.role === 'OPERATOR' && a.createdByUsername !== user.username) throw new Error('Forbidden');
+
+  // 1) već vezane uz aranžman
+  const attached = await SupplierOffer.findAll({
+    where: { arrangementId },
+    include: [{ model: OfferInquiry, as: 'inquiry' }],
+    order: [['createdAt', 'DESC']]
   });
-  return rows;
+
+  if (!includeInquiryOffers) return attached;
+
+  // 2) ponude iz upita za ovaj aranžman (arrangementId u tabeli upita)
+  const fromInquiries = await SupplierOffer.findAll({
+    where: { arrangementId: null },
+    include: [{ model: OfferInquiry, as: 'inquiry', where: { arrangementId } }],
+    order: [['createdAt', 'DESC']]
+  });
+
+  // merge bez duplikata
+  const map = new Map();
+  [...attached, ...fromInquiries].forEach(o => map.set(o.id, o));
+  return Array.from(map.values());
 }
 
 /**

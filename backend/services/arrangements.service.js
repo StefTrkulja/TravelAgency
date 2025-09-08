@@ -1,4 +1,6 @@
 // backend/services/arrangements.service.js
+'use strict';
+
 const {
   sequelize,
   TravelArrangement,
@@ -18,7 +20,7 @@ const {
 
 const { Op } = require('sequelize');
 
-// Status machine guards
+// -------------------- Status machine guards --------------------
 const Allowed = {
   DRAFT: ['QUOTING', 'READY'],
   QUOTING: ['READY'],
@@ -29,22 +31,78 @@ const Allowed = {
   INACTIVE: []
 };
 function assertTransition(from, to) {
+  if (from === to) return;
   if (!Allowed[from]?.includes(to)) {
     throw new Error(`Transition ${from}→${to} not allowed`);
   }
 }
 
-// Category ↔ OfferType map (aligned to your enums)
+// -------------------- Kategorije i tipovi ponuda --------------------
 const CategoryMap = {
   TRANSPORT: ['BUS', 'AIRLINE'],
-  ACCOMMODATION: ['HOTEL'], // dodaj APT/HOSTEL ako uvedeš u OfferType
-  TOUR: ['TOUR', 'GUIDE']
+  ACCOMMODATION: ['HOTEL'],
+  TOUR: ['TOUR', 'GUIDE', 'OTHER']
 };
 function categoryMatchesOfferType(category, offerType) {
   const arr = CategoryMap[category] || [];
   return arr.includes(offerType);
 }
+function offerTypeToCategory(offerType) {
+  if (offerType === 'HOTEL') return 'ACCOMMODATION';
+  if (offerType === 'BUS' || offerType === 'AIRLINE') return 'TRANSPORT';
+  return 'TOUR';
+}
 
+// -------------------- Helperi za READY/DRAFT automatski --------------------
+function requiredCatsFor(type) {
+  return type === 'DAY_TRIP'
+    ? ['TRANSPORT', 'TOUR']
+    : ['TRANSPORT', 'ACCOMMODATION', 'TOUR'];
+}
+
+async function selectionsCoverRequired(arrangementId, type, tx) {
+  const need = new Set(requiredCatsFor(type));
+  const rows = await OfferSelection.findAll({
+    where: { arrangementId },
+    attributes: ['category'],
+    transaction: tx
+  });
+  for (const r of rows) need.delete(r.category);
+  return need.size === 0;
+}
+
+/**
+ * Ako su sve kategorije pokrivene → READY.
+ * Ako nisu, a status je bio READY → DRAFT.
+ * Ako je CHANGES_REQUESTED i nije pokriveno sve → ostaje CHANGES_REQUESTED
+ *   (po tvojoj tablici dozvoljeno je samo CHANGES_REQUESTED -> READY).
+ */
+async function maybeUpdateReady(a, tx) {
+  const full = await selectionsCoverRequired(a.id, a.type, tx);
+
+  if (full) {
+    if (a.status !== 'READY') {
+      // iz bilo kog dozvoljenog (DRAFT/QUOTING/CHANGES_REQUESTED) u READY
+      if (['DRAFT', 'QUOTING', 'CHANGES_REQUESTED'].includes(a.status)) {
+        assertTransition(a.status, 'READY');
+        a.status = 'READY';
+        await a.save({ transaction: tx });
+      }
+    }
+  } else {
+    if (a.status === 'READY') {
+      // READY -> DRAFT
+      assertTransition('READY', 'DRAFT');
+      a.status = 'DRAFT';
+      await a.save({ transaction: tx });
+    }
+    // CHANGES_REQUESTED ostavljamo takav dok ne bude full (tada gore dižemo u READY)
+  }
+
+  return a;
+}
+
+// -------------------- Permisije --------------------
 function ensureOperatorOrAdminOnArrangement(user, arrangement) {
   if (user.role === 'ADMIN') return;
   if (user.role !== 'OPERATOR' || arrangement.createdByUsername !== user.username) {
@@ -52,6 +110,7 @@ function ensureOperatorOrAdminOnArrangement(user, arrangement) {
   }
 }
 
+// -------------------- CRUD --------------------
 async function createArrangement(user, payload) {
   if (!['OPERATOR', 'ADMIN'].includes(user.role)) throw new Error('Forbidden');
 
@@ -69,11 +128,10 @@ async function createArrangement(user, payload) {
     basePricePerPerson: payload.basePricePerPerson,
     transportType: payload.transportType,        // BUS | PLANE | OWN
     accommodationType: payload.accommodationType,// HOTEL | APT | HOSTEL | OTHER
-    type: payload.type,                          // DAY_TRIP | MULTI_DAY
+    type: payload.type                            // DAY_TRIP | MULTI_DAY
     // status default: DRAFT
   });
 
-  // Optionally create initial version
   await ArrangementVersion.create({
     arrangementId: a.id,
     versionNo: 1,
@@ -90,7 +148,6 @@ async function listArrangements(user, query = {}) {
   if (user.role === 'OPERATOR') {
     where.createdByUsername = user.username;
   } else if (user.role === 'SUPPLIER') {
-    // Supplier vidi aranžmane za koje postoji bar jedan SupplierOffer prema njemu
     const sup = await Supplier.findOne({ where: { accountUsername: user.username } });
     if (!sup) return [];
     include.push({
@@ -99,8 +156,6 @@ async function listArrangements(user, query = {}) {
       where: { supplierId: sup.id },
       required: true
     });
-  } else {
-    // MANAGER/ADMIN – bez posebnog filtera
   }
 
   return await TravelArrangement.findAll({ where, include, order: [['createdAt', 'DESC']] });
@@ -158,21 +213,21 @@ async function updateArrangement(user, id, payload) {
       changeNote: payload._changeNote || 'Update'
     }, { transaction: tx });
 
+    // ovde ne diramo status; status se rešava izborom/brisanje ponuda
     return a;
   });
 }
-
 async function deleteArrangement(user, id) {
   return await sequelize.transaction(async (tx) => {
     const a = await TravelArrangement.findByPk(id, { transaction: tx });
     if (!a) throw new Error('Not found');
 
-    if (user.role !== 'ADMIN') {
-      ensureOperatorOrAdminOnArrangement(user, a);
-      if (a.status !== 'DRAFT') throw new Error('Only DRAFT can be deleted by operator');
-    }
+    // ADMIN može sve; OPERATOR – samo svoje (bez obzira na status)
+   // if (user.role !== 'ADMIN') {
+     // ensureOperatorOrAdminOnArrangement(user, a); // baca 'Forbidden' ako nije vlasnik
+    //}
 
-    // Clean child data
+    // Clean child data (kao i do sada)
     await OfferSelection.destroy({ where: { arrangementId: id }, transaction: tx });
 
     const offers = await SupplierOffer.findAll({ where: { arrangementId: id }, transaction: tx });
@@ -192,6 +247,7 @@ async function deleteArrangement(user, id) {
   });
 }
 
+// -------------------- Selekcija ponuda --------------------
 /**
  * Select a supplier offer for a given category.
  * body: { offerId, category: 'TRANSPORT'|'ACCOMMODATION'|'TOUR' }
@@ -216,7 +272,7 @@ async function selectOffer(user, arrangementId, body) {
       throw new Error(`Offer type ${offer.offerType} cannot be used for category ${category}`);
     }
 
-    // Upsert selection (unique (arrangementId, category))
+    // Upsert selection
     const existing = await OfferSelection.findOne({ where: { arrangementId, category }, transaction: tx });
     if (existing) {
       existing.offerId = offerId;
@@ -232,19 +288,8 @@ async function selectOffer(user, arrangementId, body) {
       }, { transaction: tx });
     }
 
-    // Move to READY if required categories are all chosen
-    const requiredCats = a.type === 'DAY_TRIP' ? ['TRANSPORT', 'TOUR'] : ['TRANSPORT', 'ACCOMMODATION', 'TOUR'];
-    const count = await OfferSelection.count({
-      where: { arrangementId, category: { [Op.in]: requiredCats } },
-      transaction: tx
-    });
-    if (count === requiredCats.length && a.status !== 'READY') {
-      if (['DRAFT', 'QUOTING', 'CHANGES_REQUESTED'].includes(a.status)) {
-        assertTransition(a.status, 'READY');
-        a.status = 'READY';
-        await a.save({ transaction: tx });
-      }
-    }
+    // automatski podigni/spusti status po izboru
+    await maybeUpdateReady(a, tx);
 
     return { ok: true };
   });
@@ -265,7 +310,95 @@ async function unselectOffer(user, arrangementId, body) {
 
     await OfferSelection.destroy({ where: { arrangementId, category }, transaction: tx });
 
+    // ako je bio READY i sad nema sve kategorije -> DRAFT
+    await maybeUpdateReady(a, tx);
+
     return { ok: true };
+  });
+}
+
+// -------------------- Povezivanje ponuda uz aranžman --------------------
+/**
+ * Poveži JEDNU ponudu uz aranžman (i opcionalno selektuj)
+ * body: { offerId, inquiryId? }
+ */
+async function attachOfferToArrangement(user, arrangementId, body = {}) {
+  const { offerId, inquiryId } = body;
+  if (!offerId) throw new Error('offerId required');
+
+  const a = await TravelArrangement.findByPk(arrangementId);
+  if (!a) throw new Error('Arrangement not found');
+  if (user.role !== 'ADMIN' && a.createdByUsername !== user.username) throw new Error('Forbidden');
+
+  const so = await SupplierOffer.findByPk(offerId);
+  if (!so) throw new Error('Offer not found');
+  if (inquiryId && so.inquiryId !== Number(inquiryId)) {
+    throw new Error('Offer does not belong to this inquiry');
+  }
+
+  so.arrangementId = a.id;
+  await so.save();
+
+  const category = offerTypeToCategory(so.offerType);
+  await selectOffer(user, a.id, { offerId: so.id, category });
+
+  return { ok: true, offerId: so.id, arrangementId: a.id, categorySelected: category };
+}
+
+/**
+ * Poveži VIŠE ponuda odjednom
+ * body: { offerIds: number[], inquiryId? }
+ */
+async function attachOffersToNewArrangement(user, arrangementId, body = {}) {
+  return await sequelize.transaction(async (tx) => {
+    const a = await TravelArrangement.findByPk(arrangementId, { transaction: tx });
+    if (!a) throw new Error('Arrangement not found');
+    ensureOperatorOrAdminOnArrangement(user, a);
+
+    const { offerIds, inquiryId } = body;
+    if (!Array.isArray(offerIds) || !offerIds.length) {
+      return { attached: 0, selectionsCreated: 0 };
+    }
+
+    const offers = await SupplierOffer.findAll({
+      where: { id: { [Op.in]: offerIds.map(Number) } },
+      transaction: tx
+    });
+    if (!offers.length) return { attached: 0, selectionsCreated: 0 };
+
+    await SupplierOffer.update(
+      { arrangementId },
+      { where: { id: { [Op.in]: offers.map(o => o.id) } }, transaction: tx }
+    );
+
+    const picks = {
+      TRANSPORT: offers.find(o => ['BUS','AIRLINE'].includes(o.offerType))?.id || null,
+      ACCOMMODATION: offers.find(o => o.offerType === 'HOTEL')?.id || null,
+      TOUR: offers.find(o => ['GUIDE','TOUR','OTHER'].includes(o.offerType))?.id || null,
+    };
+
+    let selectionsCreated = 0;
+    for (const [category, offerId] of Object.entries(picks)) {
+      if (!offerId) continue;
+      await OfferSelection.upsert(
+        { arrangementId, category, offerId, selectedByUsername: user.username },
+        { transaction: tx }
+      );
+      selectionsCreated++;
+    }
+
+    // posle batch-a takođe proveri READY/DRAFT
+    await maybeUpdateReady(a, tx);
+
+    if (inquiryId) {
+      await ArrangementVersion.create({
+        arrangementId,
+        versionNo: (await ArrangementVersion.max('versionNo', { where:{ arrangementId }, transaction: tx }) || 0) + 1,
+        changeNote: `Offers attached automatically for inquiry #${inquiryId}`
+      }, { transaction: tx });
+    }
+
+    return { attached: offers.length, selectionsCreated };
   });
 }
 
@@ -277,5 +410,6 @@ module.exports = {
   deleteArrangement,
   selectOffer,
   unselectOffer,
-  assertTransition
+  assertTransition,
+  attachOffersToNewArrangement,
 };
