@@ -20,7 +20,6 @@ const {
 
 const { Op } = require('sequelize');
 
-// -------------------- Status machine guards --------------------
 const Allowed = {
   DRAFT: ['QUOTING', 'READY'],
   QUOTING: ['READY'],
@@ -53,7 +52,6 @@ function offerTypeToCategory(offerType) {
   return 'TOUR';
 }
 
-// -------------------- Helperi za READY/DRAFT automatski --------------------
 function requiredCatsFor(type) {
   return type === 'DAY_TRIP'
     ? ['TRANSPORT', 'TOUR']
@@ -75,14 +73,12 @@ async function selectionsCoverRequired(arrangementId, type, tx) {
  * Ako su sve kategorije pokrivene → READY.
  * Ako nisu, a status je bio READY → DRAFT.
  * Ako je CHANGES_REQUESTED i nije pokriveno sve → ostaje CHANGES_REQUESTED
- *   (po tvojoj tablici dozvoljeno je samo CHANGES_REQUESTED -> READY).
  */
 async function maybeUpdateReady(a, tx) {
   const full = await selectionsCoverRequired(a.id, a.type, tx);
 
   if (full) {
     if (a.status !== 'READY') {
-      // iz bilo kog dozvoljenog (DRAFT/QUOTING/CHANGES_REQUESTED) u READY
       if (['DRAFT', 'QUOTING', 'CHANGES_REQUESTED'].includes(a.status)) {
         assertTransition(a.status, 'READY');
         a.status = 'READY';
@@ -96,13 +92,11 @@ async function maybeUpdateReady(a, tx) {
       a.status = 'DRAFT';
       await a.save({ transaction: tx });
     }
-    // CHANGES_REQUESTED ostavljamo takav dok ne bude full (tada gore dižemo u READY)
   }
 
   return a;
 }
 
-// -------------------- Permisije --------------------
 function ensureOperatorOrAdminOnArrangement(user, arrangement) {
   if (user.role === 'ADMIN') return;
   if (user.role !== 'OPERATOR' || arrangement.createdByUsername !== user.username) {
@@ -110,7 +104,6 @@ function ensureOperatorOrAdminOnArrangement(user, arrangement) {
   }
 }
 
-// -------------------- CRUD --------------------
 async function createArrangement(user, payload) {
   if (!['OPERATOR', 'ADMIN'].includes(user.role)) throw new Error('Forbidden');
 
@@ -126,10 +119,9 @@ async function createArrangement(user, payload) {
     title: payload.title,
     summary: payload.summary || null,
     basePricePerPerson: payload.basePricePerPerson,
-    transportType: payload.transportType,        // BUS | PLANE | OWN
-    accommodationType: payload.accommodationType,// HOTEL | APT | HOSTEL | OTHER
-    type: payload.type                            // DAY_TRIP | MULTI_DAY
-    // status default: DRAFT
+    transportType: payload.transportType,       
+    accommodationType: payload.accommodationType,
+    type: payload.type                            
   });
 
   await ArrangementVersion.create({
@@ -213,7 +205,6 @@ async function updateArrangement(user, id, payload) {
       changeNote: payload._changeNote || 'Update'
     }, { transaction: tx });
 
-    // ovde ne diramo status; status se rešava izborom/brisanje ponuda
     return a;
   });
 }
@@ -248,10 +239,6 @@ async function deleteArrangement(user, id) {
 }
 
 // -------------------- Selekcija ponuda --------------------
-/**
- * Select a supplier offer for a given category.
- * body: { offerId, category: 'TRANSPORT'|'ACCOMMODATION'|'TOUR' }
- */
 async function selectOffer(user, arrangementId, body) {
   return await sequelize.transaction(async (tx) => {
     const a = await TravelArrangement.findByPk(arrangementId, { transaction: tx });
@@ -272,7 +259,6 @@ async function selectOffer(user, arrangementId, body) {
       throw new Error(`Offer type ${offer.offerType} cannot be used for category ${category}`);
     }
 
-    // Upsert selection
     const existing = await OfferSelection.findOne({ where: { arrangementId, category }, transaction: tx });
     if (existing) {
       existing.offerId = offerId;
@@ -288,17 +274,13 @@ async function selectOffer(user, arrangementId, body) {
       }, { transaction: tx });
     }
 
-    // automatski podigni/spusti status po izboru
     await maybeUpdateReady(a, tx);
 
     return { ok: true };
   });
 }
 
-/**
- * Unselect (remove) the selection for a given category.
- * body: { category }
- */
+
 async function unselectOffer(user, arrangementId, body) {
   return await sequelize.transaction(async (tx) => {
     const a = await TravelArrangement.findByPk(arrangementId, { transaction: tx });
@@ -310,7 +292,6 @@ async function unselectOffer(user, arrangementId, body) {
 
     await OfferSelection.destroy({ where: { arrangementId, category }, transaction: tx });
 
-    // ako je bio READY i sad nema sve kategorije -> DRAFT
     await maybeUpdateReady(a, tx);
 
     return { ok: true };
@@ -318,10 +299,7 @@ async function unselectOffer(user, arrangementId, body) {
 }
 
 // -------------------- Povezivanje ponuda uz aranžman --------------------
-/**
- * Poveži JEDNU ponudu uz aranžman (i opcionalno selektuj)
- * body: { offerId, inquiryId? }
- */
+
 async function attachOfferToArrangement(user, arrangementId, body = {}) {
   const { offerId, inquiryId } = body;
   if (!offerId) throw new Error('offerId required');
@@ -347,7 +325,6 @@ async function attachOfferToArrangement(user, arrangementId, body = {}) {
 
 /**
  * Poveži VIŠE ponuda odjednom
- * body: { offerIds: number[], inquiryId? }
  */
 async function attachOffersToNewArrangement(user, arrangementId, body = {}) {
   return await sequelize.transaction(async (tx) => {
@@ -387,7 +364,6 @@ async function attachOffersToNewArrangement(user, arrangementId, body = {}) {
       selectionsCreated++;
     }
 
-    // posle batch-a takođe proveri READY/DRAFT
     await maybeUpdateReady(a, tx);
 
     if (inquiryId) {

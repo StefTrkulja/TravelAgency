@@ -62,8 +62,7 @@ async function sendForApproval(user, body) {
 }
 
 /**
- * MANAGER decides on approval: APPROVED | REJECTED | CHANGES_REQUESTED
- * body: { approvalRequestId, decision, comment? }
+ * MANAGER - APPROVED | REJECTED | CHANGES_REQUESTED
  */
 async function decide(user, body) {
   return await sequelize.transaction(async (tx) => {
@@ -91,7 +90,6 @@ async function decide(user, body) {
       assertTransition('PENDING', 'ACTIVE');
       a.status = 'ACTIVE';
     } else {
-      // For both REJECTED and CHANGES_REQUESTED → push back to CHANGES_REQUESTED
       assertTransition('PENDING', 'CHANGES_REQUESTED');
       a.status = 'CHANGES_REQUESTED';
     }
@@ -102,14 +100,13 @@ async function decide(user, body) {
 }
 
 /**
- * List approval requests (MANAGER sees all; OPERATOR sees only his)
+ * Lista approval requests
  */
 async function list(user, query = {}) {
   const where = {};
   const include = [];
 
   if (user.role === 'OPERATOR') {
-    // filter by arrangements owned by operator
     include.push({
       model: TravelArrangement,
       as: 'arrangement',
@@ -117,7 +114,6 @@ async function list(user, query = {}) {
       required: true
     });
   } else if (user.role === 'MANAGER' || user.role === 'ADMIN') {
-    // no special filter
     include.push({ model: TravelArrangement, as: 'arrangement', required: false });
   } else {
     throw new Error('Forbidden');

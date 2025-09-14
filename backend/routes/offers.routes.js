@@ -5,11 +5,10 @@ const router = express.Router();
 const { verifyToken } = require('../utils/jwtParser');
 const offerSvc = require('../services/offerService.service');
 const { Op } = require('sequelize');
-// NA VRHU FAJLA dodaj import Supplier:
 const { Supplier, SupplierOffer, OfferInquiry } = require('../models');
 
 // ------------------------------
-// OPERATOR šalje upite dobavljačima (ostaje preko servisa)
+// OPERATOR šalje upite dobavljačima 
 router.post('/inquiries', verifyToken('OPERATOR', 'ADMIN'), async (req, res) => {
   try {
     const out = await offerSvc.sendInquiries(req.user, req.body);
@@ -17,7 +16,7 @@ router.post('/inquiries', verifyToken('OPERATOR', 'ADMIN'), async (req, res) => 
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// OPERATOR – lista svojih upita (ostaje preko servisa)
+// OPERATOR – lista svojih upita 
 router.get('/inquiries', verifyToken('OPERATOR','ADMIN'), async (req, res) => {
   try {
     const out = await offerSvc.listInquiries(req.user, req.query);
@@ -25,7 +24,6 @@ router.get('/inquiries', verifyToken('OPERATOR','ADMIN'), async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// OPERATOR – sve ponude pristigle na jedan upit (ostaje preko servisa)
 router.get('/inquiries/:inquiryId/offers', verifyToken('OPERATOR','ADMIN'), async (req, res) => {
   try {
     const out = await offerSvc.listOffersForInquiry(req.user, +req.params.inquiryId);
@@ -33,29 +31,26 @@ router.get('/inquiries/:inquiryId/offers', verifyToken('OPERATOR','ADMIN'), asyn
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// SUPPLIER submit ponude — postavi supplierId iz prijavljenog korisnika
+// SUPPLIER submit ponude 
 router.post('/submit', verifyToken('SUPPLIER', 'ADMIN'), async (req, res) => {
   try {
     const body = req.body || {};
     if (!body.inquiryId) throw new Error('inquiryId required');
     if (!body.offerType) throw new Error('offerType required');
 
-    // 1) pronadji upit da izvučeš arrangementId
+    //  arrangementId
     const inquiry = await OfferInquiry.findByPk(Number(body.inquiryId));
     if (!inquiry) throw new Error('Inquiry not found');
 
-    // 2) odredi supplierId iz tokena ili baze
-    //    - ako tvoj jwt sadrži supplierId: req.user.supplierId
-    //    - fallback: pronalazak Supplier reda koji pripada ovom useru
+    //supplierId iz tokena ili baze
+
     let supplierId = req.user.supplierId || null;
     if (!supplierId) {
-      // prilagodi polje u where-u ako se drugačije zove (npr. ownerUsername/userUsername)
       const sup = await Supplier.findOne({ where: { accountUsername: req.user.username } });
       if (!sup) throw new Error('Supplier profile not found for this user');
       supplierId = sup.id;
     }
 
-    // 3) tip-specifična validacija (isti uslovi kao malopre)
     const t = body.offerType;
     if (t === 'HOTEL') {
       if (!body.hotelName) throw new Error('hotelName required for HOTEL');
@@ -70,19 +65,15 @@ router.post('/submit', verifyToken('SUPPLIER', 'ADMIN'), async (req, res) => {
         throw new Error('title or guideName required for GUIDE/TOUR/OTHER');
       }
     }
-
-    // 4) defaulti + normalizacija
     body.currency = body.currency || 'EUR';
     body.priceTotal = Number(body.priceTotal || 0);
     body.capacityTotal = Number(body.capacityTotal || 0);
     body.status = 'RECEIVED';
 
-    // *uvek* setuj iz backenda:
     body.supplierId = supplierId;
     body.arrangementId = inquiry.arrangementId || null;
     body.inquiryId = inquiry.id;
 
-    // (opciono) pretvori datume ako ih šalješ kao string
     if (body.availabilityStart) body.availabilityStart = new Date(body.availabilityStart);
     if (body.availabilityEnd) body.availabilityEnd = new Date(body.availabilityEnd);
 
@@ -94,7 +85,7 @@ router.post('/submit', verifyToken('SUPPLIER', 'ADMIN'), async (req, res) => {
 });
 
 
-// SUPPLIER inbox (ostaje preko servisa)
+// SUPPLIER inbox 
 router.get('/my', verifyToken('SUPPLIER', 'ADMIN'), async (req, res) => {
   try {
     const out = await offerSvc.listMyOffersAndInquiries(req.user, req.query);
