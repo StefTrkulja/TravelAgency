@@ -14,13 +14,6 @@ const ArrangementStatus = {
   INACTIVE: 'INACTIVE'
 };
 
-class TravelArrangement extends Model {
-  static associate(models) {
-    // ...
-    // was: hasOne(models.OfferSelection, { as: 'selection' })
-    TravelArrangement.hasMany(models.OfferSelection, { foreignKey: 'arrangementId', as: 'selections' });
-  }
-}
 const TransportType = { BUS: 'BUS', PLANE: 'PLANE', OWN: 'OWN' };
 const AccommodationType = { HOTEL: 'HOTEL', APT: 'APT', HOSTEL: 'HOSTEL', OTHER: 'OTHER' };
 
@@ -34,6 +27,8 @@ module.exports = (sequelize, DataTypes) => {
       TravelArrangement.hasMany(models.SupplierOffer, { foreignKey: 'arrangementId', as: 'offers' });
       TravelArrangement.hasMany(models.OfferSelection, { foreignKey: 'arrangementId', as: 'selections' });
       TravelArrangement.hasMany(models.ApprovalRequest, { foreignKey: 'arrangementId', as: 'approvals' });
+      TravelArrangement.hasMany(models.Reservation, { foreignKey: 'arrangementId', as: 'reservations' });
+
     }
   }
 

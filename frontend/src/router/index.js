@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import LoginView from '../views/LoginView.vue';
 import HomeView from '../views/HomeView.vue';
 import SignUpView from '../views/SignUpView.vue';
-
+import AdminHomePage from '../views/AdminHomePage.vue';
 
 import { store } from '@/utils/store';
 import { ro } from 'vuetify/locale';
@@ -37,11 +37,13 @@ const Approvals = () => import('@/views/Approvals.vue')
 const Analytics = () => import('@/views/Analytics.vue')
 
 
+
 // Define your routes
 const routes = [
   { path: '/', name: 'Home', component: HomeView },
   { path: '/login', name: 'Login', component: LoginView },
   { path: '/signup', name: 'SignUp', component: SignUpView },
+  { path: '/anjaHomeView', name: 'AdminHomePage', component: AdminHomePage },
 
   // Operator
 { path: '/op', name: 'op-home', component: OperatorHome, meta: { roles: ['OPERATOR','ADMIN'] } },

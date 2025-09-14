@@ -402,6 +402,8 @@ async function attachOffersToNewArrangement(user, arrangementId, body = {}) {
   });
 }
 
+
+
 module.exports = {
   createArrangement,
   listArrangements,
