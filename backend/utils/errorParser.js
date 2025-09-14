@@ -18,12 +18,19 @@ exports.parseValidationErrors = (req, res, next) => {
 }
 
 exports.parseSequelizeErrors = (exception) => {
-	const errors = exception.errors.map(error => {
-		return {
-			path: error.path,
-			message: error.message,
-		}
-	});
+  // Ako je Sequelize validation greška
+  if (Array.isArray(exception?.errors)) {
+    return exception.errors.map(error => ({
+      message: error.message,
+      path: error.path || null,
+    }));
+  }
 
-	return errors;
-}
+  // Ako je običan error (npr. throw new Error)
+  if (exception?.message) {
+    return [{ message: exception.message }];
+  }
+
+  // Fallback
+  return [{ message: 'Unexpected error occurred' }];
+};

@@ -25,6 +25,20 @@ class UserService {
 		}
 	}
 
+
+	async findOperators() {
+		const operators = await User.findAll({ where: { role: 'operator' } });
+		return new Result(StatusEnum.OK, 200, operators);
+	}
+
+	async findByUsername(username) {
+		const user = await User.findOne({ where: { username } });
+		if (!user) {
+			return new Result(StatusEnum.FAIL, 404, null, [{ message: 'User not found' }]);
+		}
+		return new Result(StatusEnum.OK, 200, user);
+	}
+
 	async isUsernameAvailable(username) {
 		if (!this.usernameBloomFilter.mightContain(username)) {
 				return true;

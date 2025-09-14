@@ -7,6 +7,8 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       Compensation.belongsTo(models.Complaint, { foreignKey: 'complaintId', as: 'complaint' });
       Compensation.hasOne(models.CompensationApproval, { foreignKey: 'compensationId', as: 'approval' });
+      Compensation.belongsTo(models.User, { foreignKey: 'managerUsername', targetKey: 'username', as: 'manager' });
+
     }
   }
   Compensation.init({
@@ -17,9 +19,9 @@ module.exports = (sequelize, DataTypes) => {
     status: { type: DataTypes.STRING(32), allowNull: false },  // npr. 'PROPOSED','APPROVED','REJECTED'
     amount: { type: DataTypes.DECIMAL(19, 2), allowNull: false },
     note: { type: DataTypes.TEXT },
-    proposedAt: { type: DataTypes.DATE },
     createdAt: { type: DataTypes.DATE },
-    updatedAt: { type: DataTypes.DATE },
+    validUntil: { type: DataTypes.DATE },
+    managerUsername: { type: DataTypes.STRING, allowNull: true },
   }, {
     sequelize,
     modelName: 'Compensation',

@@ -12,7 +12,7 @@ module.exports = (sequelize, DataTypes) => {
     id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true }, // u JPA ima embeddable ID; ovde pojednostavljeno
     complaintId: { type: DataTypes.BIGINT, allowNull: false },
     authorUsername: { type: DataTypes.STRING, allowNull: false },
-    content: { type: DataTypes.TEXT, allowNull: false },
+    text: { type: DataTypes.TEXT, allowNull: false },
     createdAt: { type: DataTypes.DATE, allowNull: true },
   }, {
     sequelize,

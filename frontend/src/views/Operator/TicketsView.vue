@@ -255,7 +255,7 @@ export default {
     },
 
     viewDetails(item) {
-      this.$router.push({ name: 'ticket-details', params: { id: item.id } });
+      this.$router.push({ name: 'OperatorTicketDetails', params: { id: item.id } });
     },
     formatDate(d) {
       if (!d) return '—';
