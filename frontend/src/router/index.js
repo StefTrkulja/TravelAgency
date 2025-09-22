@@ -5,6 +5,12 @@ import SignUpView from '../views/SignUpView.vue';
 import AdminHomePage from '../views/AdminHomePage.vue';
 
 import { store } from '@/utils/store';
+import ActivitiesView from '../views/ActivitiesView.vue';
+import ActivitySchedulesView from '../views/ActivitySchedulesView.vue';
+import TravelerActivitiesView from '../views/TravelerActivitiesView.vue';
+import AnalyticsDetailsView from '../views/AnalyticsDetails.vue';
+import ActivityReviewsView from '../views/ActivityReviewsView.vue';
+import ActivityCustomersView from '../views/ActivityCustomerView.vue';
 import { ro } from 'vuetify/locale';
 
 
@@ -71,7 +77,12 @@ const routes = [
 
 // Analytics (everyone logged-in can see; or restrict to MANAGER/ADMIN)
 { path: '/analytics', name: 'analytics', component: Analytics, meta: { roles: ['OPERATOR','SUPPLIER','MANAGER','ADMIN'] } },
- 
+  { path: '/arrangements/:arrangementId/activities', name: 'Activities', component: ActivitiesView },
+  { path: '/activities/:activityId/schedules', name: 'ActivitySchedules', component: ActivitySchedulesView },
+  { path: '/traveler/activities', name: 'TravelerActivities', component: TravelerActivitiesView },
+  { path: '/activities/:activityId/analytics/:analyticsId', name: 'AnalyticsDetails', component: AnalyticsDetailsView },
+  { path: '/activities/:activityId/reviews', name: 'ActivityReviews', component: ActivityReviewsView },
+  { path: '/activities/:activityId/customers', name: 'ActivityCustomers', component: ActivityCustomersView }
 ];
 
 
