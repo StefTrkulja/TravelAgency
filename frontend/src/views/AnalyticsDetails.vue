@@ -72,7 +72,7 @@ const barChartData = ref({
   datasets: [
     {
       label: 'Ratings',
-      data: [0, 0, 0],
+      data: [4.2, 3.8, 4.5], // Sample data to test if charts work
       backgroundColor: ['#42A5F5', '#66BB6A', '#FFA726'],
     },
   ],
@@ -83,7 +83,7 @@ const pieChartData = ref({
   datasets: [
     {
       label: 'Rates',
-      data: [0, 0, 0],
+      data: [65, 20, 15], // Sample data to test if charts work
       backgroundColor: ['#29B6F6', '#EF5350', '#AB47BC'],
     },
   ],
@@ -93,27 +93,89 @@ const pieChartData = ref({
 async function fetchAnalytics() {
   loading.value = true
   error.value = ''
-  try {
-    const { data } = await axios.get(`/activities/analytics/${analyticsId}`)
-    analytics.value = data
+  
+  // Test different possible endpoints
+  const possibleEndpoints = [
+    `/activities/analytics/${analyticsId}`,
+    `/activity-analytics/${analyticsId}`,
+    `/analytics/${analyticsId}`
+  ]
+  
+  for (const endpoint of possibleEndpoints) {
+    try {
+      console.log('Trying endpoint:', endpoint)
+      const { data } = await axios.get(endpoint)
+      console.log('Success with endpoint:', endpoint, 'Data:', data)
+      analytics.value = data
 
-    // mock update charts from backend data
-    barChartData.value.datasets[0].data = [
-      data.averageOverallRating || 0,
-      data.averageGuideRating || 0,
-      data.averageSafetyRating || 0,
-    ]
+      // Update charts with real data
+      barChartData.value = {
+        labels: ['Overall', 'Guide', 'Safety'],
+        datasets: [
+          {
+            label: 'Ratings',
+            data: [
+              data.averageOverallRating || 0,
+              data.averageGuideRating || 0,
+              data.averageSafetyRating || 0,
+            ],
+            backgroundColor: ['#42A5F5', '#66BB6A', '#FFA726'],
+          },
+        ],
+      }
 
-    pieChartData.value.datasets[0].data = [
-      data.revisitingRate || 0,
-      data.cancellationRate || 0,
-      100 - (data.revisitingRate || 0) - (data.cancellationRate || 0),
-    ]
-  } catch (e) {
-    error.value = e?.response?.data?.message || 'Failed to load analytics'
-  } finally {
-    loading.value = false
+      pieChartData.value = {
+        labels: ['Revisiting', 'Cancelled', 'Other'],
+        datasets: [
+          {
+            label: 'Rates (%)',
+            data: [
+              (data.revisitingRate || 0) * 100,
+              (data.cancellationRate || 0) * 100,
+              100 - ((data.revisitingRate || 0) * 100) - ((data.cancellationRate || 0) * 100),
+            ],
+            backgroundColor: ['#29B6F6', '#EF5350', '#AB47BC'],
+          },
+        ],
+      }
+      
+      loading.value = false
+      return // Success, exit the function
+    } catch (e) {
+      console.log('Failed with endpoint:', endpoint, 'Error:', e.response?.status, e.response?.data)
+      continue // Try next endpoint
+    }
   }
+  
+  // If we get here, all endpoints failed
+  console.error('All analytics endpoints failed')
+  error.value = 'Analytics service is not available. The backend analytics API endpoint may not be configured.'
+  
+  // Show sample data so charts aren't empty
+  console.log('Using fallback sample data')
+  barChartData.value = {
+    labels: ['Overall', 'Guide', 'Safety'],
+    datasets: [
+      {
+        label: 'Ratings (Sample)',
+        data: [4.2, 3.8, 4.5],
+        backgroundColor: ['#42A5F5', '#66BB6A', '#FFA726'],
+      },
+    ],
+  }
+
+  pieChartData.value = {
+    labels: ['Revisiting', 'Cancelled', 'Other'],
+    datasets: [
+      {
+        label: 'Rates (Sample) %',
+        data: [65, 20, 15],
+        backgroundColor: ['#29B6F6', '#EF5350', '#AB47BC'],
+      },
+    ],
+  }
+  
+  loading.value = false
 }
 
 onMounted(fetchAnalytics)

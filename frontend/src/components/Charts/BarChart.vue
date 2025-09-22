@@ -1,6 +1,9 @@
 <template>
   <div style="height:300px">
-    <Bar :data="chartData" :options="options" />
+    <div v-if="!chartData || !chartData.datasets || chartData.datasets.length === 0" class="d-flex align-center justify-center h-100">
+      <v-alert type="info" variant="tonal">No data available for chart</v-alert>
+    </div>
+    <Bar v-else :data="chartData" :options="options" />
   </div>
 </template>
 
@@ -15,6 +18,7 @@ import {
   CategoryScale,
   LinearScale
 } from 'chart.js'
+import { watch } from 'vue'
 
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
 
@@ -26,4 +30,9 @@ const options = {
   responsive: true,
   maintainAspectRatio: false
 }
+
+// Debug logging
+watch(() => props.chartData, (newData) => {
+  console.log('BarChart received data:', newData)
+}, { immediate: true, deep: true })
 </script>

@@ -1,6 +1,9 @@
 <template>
   <div style="height:300px">
-    <Pie :data="chartData" :options="options" />
+    <div v-if="!chartData || !chartData.datasets || chartData.datasets.length === 0" class="d-flex align-center justify-center h-100">
+      <v-alert type="info" variant="tonal">No data available for chart</v-alert>
+    </div>
+    <Pie v-else :data="chartData" :options="options" />
   </div>
 </template>
 
@@ -13,6 +16,7 @@ import {
   Legend,
   ArcElement
 } from 'chart.js'
+import { watch } from 'vue'
 
 ChartJS.register(Title, Tooltip, Legend, ArcElement)
 
@@ -24,4 +28,9 @@ const options = {
   responsive: true,
   maintainAspectRatio: false
 }
+
+// Debug logging
+watch(() => props.chartData, (newData) => {
+  console.log('PieChart received data:', newData)
+}, { immediate: true, deep: true })
 </script>
