@@ -1,30 +1,31 @@
 'use strict';
-const { Model: SequelizeModel } = require('sequelize');
+const { Model: Model } = require('sequelize');
 
-const OfferType = { HOTEL:'HOTEL', AIRLINE:'AIRLINE', BUS:'BUS', GUIDE:'GUIDE', OTHER:'OTHER' };
+const OfferType = { HOTEL:'HOTEL', AIRLINE:'AIRLINE', BUS:'BUS', GUIDE:'GUIDE', TOUR:'TOUR', OTHER:'OTHER' };
 const OfferStatus = { SENT:'SENT', RECEIVED:'RECEIVED', ACCEPTED:'ACCEPTED', REJECTED:'REJECTED' };
 const BoardType = { RO:'RO', BB:'BB', HB:'HB', FB:'FB', AI:'AI' }; // room only, bed&breakfast, half/full board, all inclusive
 const TransportMode = { BUS:'BUS', PLANE:'PLANE' };
 
 module.exports = (sequelize, DataTypes) => {
-  class SupplierOffer extends SequelizeModel {
+  class SupplierOffer extends Model {
     static associate(models) {
       SupplierOffer.belongsTo(models.TravelArrangement, { foreignKey: 'arrangementId', as: 'arrangement' });
       SupplierOffer.belongsTo(models.Supplier, { foreignKey: 'supplierId', as: 'supplier' });
       SupplierOffer.belongsTo(models.User, { foreignKey: 'decisionByUsername', targetKey: 'username', as: 'decisionBy' });
       SupplierOffer.hasOne(models.OfferSelection, { foreignKey: 'offerId', as: 'selection' });
-
-      // NOVO:
       SupplierOffer.hasMany(models.SupplierOfferOption, { foreignKey: 'offerId', as: 'options' });
       SupplierOffer.hasMany(models.SupplierOfferItineraryItem, { foreignKey: 'offerId', as: 'itineraryItems' });
+      SupplierOffer.belongsTo(models.OfferInquiry, { foreignKey: 'inquiryId', as: 'inquiry' });
+
     }
   }
 
   SupplierOffer.init({
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
 
-    arrangementId: { type: DataTypes.INTEGER, allowNull: false },
+    arrangementId: { type: DataTypes.INTEGER, allowNull: true },
     supplierId: { type: DataTypes.INTEGER, allowNull: false },
+    inquiryId: { type: DataTypes.INTEGER },
 
     // Osnovno
     offerType: { type: DataTypes.ENUM(...Object.values(OfferType)), allowNull: false },

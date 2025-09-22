@@ -11,14 +11,17 @@ const userRoute = require('./routes/userRoute');
 // // const statsRoute = require('./routes/statsRoute');
 // // const groupRoute = require('./routes/groupRoute');
 // // const groupMessageRoute = require('./routes/groupMessageRoute');
+
+const countryRoute = require('./routes/country.routes');
+const destinationRoute = require('./routes/destinations.routes');
+const arrangementAnjaRoute = require('./routes/arrangementsAnja.routes');
+const reservationRoute = require('./routes/reservation.route');
+const voucherRoute = require('./routes/vouchers.routes');
+const reviewRoute = require('./routes/reviews.routes');
 const sequelize = require('./models/index').sequelize;
 const { register } = require('./utils/metrics');
 const path = require('path');
 
-const arrangementsRoutes = require('./routes/arrangements.routes');
-const departuresRoutes = require('./routes/departures.routes');
-const itinerariesRoutes = require('./routes/itineraries.routes');
-const activitiesRoutes = require('./routes/activities.routes');
 
 
 // require('./services/scheduler');
@@ -55,10 +58,19 @@ app.use('/api/activities/participants', participantRoute);
 app.use('/api/activities/reviews', reviewRoute);
 app.use('/api/activities/analytics', analyticsRoute);
 app.use('/api/user', userRoute);
-app.use('/api/arrangements', arrangementsRoutes);
-app.use('/api/departures', departuresRoutes);
-app.use('/api/itineraries', itinerariesRoutes);
-app.use('/api/activities', activitiesRoutes);
+app.use('/api/arrangements', require('./routes/arrangements.routes'));
+app.use('/api/offers', require('./routes/offers.routes'));
+app.use('/api/approvals', require('./routes/approvals.routes'));
+app.use('/api/departures', require('./routes/departures.routes'));
+app.use('/api/itineraries', require('./routes/itineraries.routes'));
+app.use('/api/activities', require('./routes/activities.routes'));
+app.use('/api/destinations', destinationRoute);
+app.use('/api/reservations', reservationRoute);
+app.use('/api/countries', countryRoute);
+app.use('/api/anjaArrangements', arrangementAnjaRoute);
+app.use('/api/vouchers',voucherRoute);
+app.use('/api/reviews',reviewRoute);
+//app.use('/api/arrangement', require('./routes/arrangements.routes'));
 // app.use('/api/post', postRoute);
 // app.use('/api/location', locationRoute);
 // app.use('/api/image', imageRoute);

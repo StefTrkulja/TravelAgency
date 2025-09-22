@@ -1,27 +1,27 @@
+// backend/routes/activities.routes.js
 const express = require('express');
 const router = express.Router();
+const { verifyToken } = require('../utils/jwtParser');
 const svc = require('../services/activities.service');
-const { StatusEnum } = require('../utils/result');
 
-router.post('/:itineraryId', async (req, res) => {
-  const r = await svc.create(req.params.itineraryId, req.body);
-  res.status(r.code).json(r.status === StatusEnum.FAIL ? { errors: r.errors } : r.data);
+router.post('/', verifyToken('OPERATOR', 'ADMIN'), async (req, res) => {
+  try { res.status(201).json(await svc.create(req.body)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
 });
-router.get('/by-itinerary/:itineraryId', async (req, res) => {
-  const r = await svc.list(req.params.itineraryId);
-  res.status(r.code).json(r.data);
+
+router.get('/', verifyToken('OPERATOR','SUPPLIER','MANAGER','ADMIN'), async (req, res) => {
+  try { res.json(await svc.list(req.query)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
 });
-router.get('/:id', async (req, res) => {
-  const r = await svc.get(req.params.id);
-  res.status(r.code).json(r.status === StatusEnum.FAIL ? { errors: r.errors } : r.data);
+
+router.put('/:id', verifyToken('OPERATOR', 'ADMIN'), async (req, res) => {
+  try { res.json(await svc.update(+req.params.id, req.body)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
 });
-router.put('/:id', async (req, res) => {
-  const r = await svc.update(req.params.id, req.body);
-  res.status(r.code).json(r.status === StatusEnum.FAIL ? { errors: r.errors } : r.data);
-});
-router.delete('/:id', async (req, res) => {
-  const r = await svc.remove(req.params.id);
-  res.status(r.code).json(r.status === StatusEnum.FAIL ? { errors: r.errors } : r.data);
+
+router.delete('/:id', verifyToken('ADMIN'), async (req, res) => {
+  try { await svc.remove(+req.params.id); res.status(204).end(); }
+  catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 module.exports = router;

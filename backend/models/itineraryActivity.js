@@ -1,8 +1,8 @@
 'use strict';
-const { Model: SequelizeModel } = require('sequelize');
+const { Model } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
-  class ItineraryActivity extends SequelizeModel {
+  class ItineraryActivity extends Model {
     static associate(models) {
       ItineraryActivity.belongsTo(models.Itinerary, { foreignKey: 'itineraryId', as: 'itinerary' });
     }

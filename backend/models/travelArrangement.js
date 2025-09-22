@@ -3,7 +3,17 @@
 const { Model } = require('sequelize');
 
 const ArrangementType = { DAY_TRIP: 'DAY_TRIP', MULTI_DAY: 'MULTI_DAY' };
-const ArrangementStatus = { DRAFT: 'DRAFT', PENDING: 'PENDING', ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE' };
+// + dopuni enumeraciju statusa
+const ArrangementStatus = { 
+  DRAFT: 'DRAFT', 
+  QUOTING: 'QUOTING',          // novo
+  READY: 'READY',              // novo
+  PENDING: 'PENDING',
+  ACTIVE: 'ACTIVE',
+  CHANGES_REQUESTED: 'CHANGES_REQUESTED', // novo
+  INACTIVE: 'INACTIVE'
+};
+
 const TransportType = { BUS: 'BUS', PLANE: 'PLANE', OWN: 'OWN' };
 const AccommodationType = { HOTEL: 'HOTEL', APT: 'APT', HOSTEL: 'HOSTEL', OTHER: 'OTHER' };
 
@@ -15,8 +25,10 @@ module.exports = (sequelize, DataTypes) => {
       TravelArrangement.hasMany(models.ArrangementVersion, { foreignKey: 'arrangementId', as: 'versions' });
       TravelArrangement.hasMany(models.Departure, { foreignKey: 'arrangementId', as: 'departures' });
       TravelArrangement.hasMany(models.SupplierOffer, { foreignKey: 'arrangementId', as: 'offers' });
-      TravelArrangement.hasOne(models.OfferSelection, { foreignKey: 'arrangementId', as: 'selection' });
+      TravelArrangement.hasMany(models.OfferSelection, { foreignKey: 'arrangementId', as: 'selections' });
       TravelArrangement.hasMany(models.ApprovalRequest, { foreignKey: 'arrangementId', as: 'approvals' });
+      TravelArrangement.hasMany(models.Reservation, { foreignKey: 'arrangementId', as: 'reservations' });
+
     }
   }
 

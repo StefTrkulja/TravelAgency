@@ -1,76 +1,108 @@
+// backend/routes/arrangements.routes.js
+'use strict';
 const express = require('express');
 const router = express.Router();
-const svc = require('../services/arrangements.service');
-const { StatusEnum } = require('../utils/result');
 const { verifyToken } = require('../utils/jwtParser');
+const svc = require('../services/arrangements.service');
 
-// helper za role nakon verifyToken()
-// jer verifyToken prima samo JEDNU rolu (ili ništa)
-const allowRoles = (...roles) => (req, res, next) => {
-  if (!req.user) return res.status(401).json({ message: 'Unauthorized access' });
-  if (roles.length && !roles.includes(req.user.role)) {
-    return res.status(403).json({ message: 'Forbidden' });
-  }
-  next();
-};
+const {
+  TravelArrangement,
+  Destination,
+  OfferSelection,
+  SupplierOffer
+} = require('../models');
 
+// ------------------ CRUD preko servisa (ostavljam kako je bilo)
+router.post('/', verifyToken('OPERATOR', 'ADMIN'), async (req, res) => {
+  try {
+    const a = await svc.createArrangement(req.user, req.body);
+    res.status(201).json(a);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
 
-router.post('/',
-  verifyToken(),              // ulogovan
-  allowRoles('OPERATOR'),     // i rola OPERATOR
-  async (req, res) => {
-    const r = await svc.create(req.body, req.user.username);
-    return res.status(r.code).json(r.status === StatusEnum.FAIL ? { errors: r.errors } : r.data);
-  }
-);
+router.get('/', verifyToken('OPERATOR', 'SUPPLIER', 'MANAGER', 'ADMIN'), async (req, res) => {
+  try {
+    const list = await svc.listArrangements(req.user, req.query);
+    res.json(list);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
 
-// Listanje aranžmana (ulogovan bilo ko).
-// Podržava: ?status=DRAFT,PENDING,ACTIVE&search=...&type=...
-router.get('/',
-  verifyToken(),              // ulogovan
-  async (req, res) => {
-    const r = await svc.list(req.query);
-    return res.status(r.code).json(r.data);
-  }
-);
+router.put('/:id', verifyToken('OPERATOR', 'ADMIN','MANAGER'), async (req, res) => {
+  try {
+    const a = await svc.updateArrangement(req.user, +req.params.id, req.body);
+    res.json(a);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
 
-// Grupisano listanje po statusima (draft/pending/active) – ulogovan bilo ko
-router.get('/grouped',
-  verifyToken(),
-  async (req, res) => {
-    const r = await svc.listGrouped();
-    return res.status(r.code).json(r.status === StatusEnum.FAIL ? { errors: r.errors } : r.data);
-  }
-);
+router.delete('/:id', verifyToken('ADMIN', 'OPERATOR', 'MANAGER'), async (req, res) => {
+  try {
+    await svc.deleteArrangement(req.user, +req.params.id);
+    res.status(204).end();
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
 
-// Dohvatanje po ID (ulogovan bilo ko, vraća i relacije)
-router.get('/:id',
-  verifyToken(),
-  async (req, res) => {
-    const r = await svc.getById(req.params.id, true);
-    return res.status(r.code).json(r.status === StatusEnum.FAIL ? { errors: r.errors } : r.data);
-  }
-);
+// ------------------ GET detalj: vrati destinaciju + selections + kompletne ponude
+router.get('/:id', verifyToken('OPERATOR', 'SUPPLIER', 'MANAGER', 'ADMIN'), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const a = await TravelArrangement.findByPk(id, {
+      include: [
+        { model: Destination, as: 'destination' },
+        { model: OfferSelection, as: 'selections', include: [{ model: SupplierOffer, as: 'offer' }] }
+      ]
+    });
+    if (!a) return res.status(404).json({ error: 'Not found' });
+    res.json(a);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
 
+// ------------------ Select / Unselect (ostavljam tvoj unselect preko servisa)
+router.post('/:id/select-offer', verifyToken('OPERATOR', 'ADMIN','MANAGER'), async (req, res) => {
+  try {
+    const arrangementId = Number(req.params.id);
+    const { category, offerId } = req.body || {};
+    if (!category || !offerId) throw new Error('category and offerId required');
 
-router.put('/:id',
-  verifyToken(),
-  allowRoles('OPERATOR', 'MANAGER'),
-  async (req, res) => {
+    const a = await TravelArrangement.findByPk(arrangementId);
+    if (!a) throw new Error('Arrangement not found');
 
-    const r = await svc.update(req.params.id, req.body, req.user.username);
-    return res.status(r.code).json(r.status === StatusEnum.FAIL ? { errors: r.errors } : r.data);
-  }
-);
+    // upsert izbor
+    await OfferSelection.upsert({ arrangementId, category, offerId });
 
+    // ako su sve obavezne kategorije pokrivene -> READY
+    const required = a.type === 'DAY_TRIP'
+      ? ['TRANSPORT', 'TOUR']
+      : ['TRANSPORT', 'ACCOMMODATION', 'TOUR'];
 
-router.delete('/:id',
-  verifyToken(),
-  allowRoles('MANAGER'),
-  async (req, res) => {
-    const r = await svc.remove(req.params.id);
-    return res.status(r.code).json(r.status === StatusEnum.FAIL ? { errors: r.errors } : r.data);
-  }
-);
+    const all = await OfferSelection.findAll({ where: { arrangementId } });
+    const complete = required.every(c => all.find(s => s.category === c));
+
+    if (complete && (a.status === 'DRAFT' || a.status === 'CHANGES_REQUESTED')) {
+      a.status = 'READY';
+      await a.save();
+    }
+
+    res.json({ ok: true, status: a.status });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+router.post('/:id/unselect-offer', verifyToken('OPERATOR', 'ADMIN','MANAGER'), async (req, res) => {
+  try {
+    const out = await svc.unselectOffer(req.user, +req.params.id, req.body);
+    res.json(out);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// Batch attach (ostavljam preko servisa)
+router.post('/:arrangementId/attach-offers', verifyToken('OPERATOR','ADMIN'), async (req,res)=>{
+  try {
+    const out = await svc.attachOffersToNewArrangement(
+      req.user,
+      Number(req.params.arrangementId),
+      req.body   // { offerIds: number[], inquiryId?: number }
+    );
+    res.json(out);
+  } catch(e){ res.status(400).json({ error: e.message }); }
+});
 
 module.exports = router;
