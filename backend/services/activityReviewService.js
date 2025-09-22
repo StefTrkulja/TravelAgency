@@ -126,6 +126,45 @@ class ActivityReviewService {
       return new Result(StatusEnum.FAIL, 500, null, { message: error.message });
     }
   }
+
+  async getReviewsGroupedByActivityId(activityId, filter = {}) {
+    try {
+      // 1. Fetch bookings + schedules for this activity
+      const bookings = await ActivityBooking.findAll({
+        include: [{ model: ActivitySchedule, as: 'activitySchedule', where: { activity_id: activityId } }]
+      });
+
+      // 2. Fetch reviews with filters
+      const reviews = await ActivityReview.findAll({
+        where: {
+          activity_booking_id: bookings.map(b => b.id),
+          ...filter
+        },
+        include: [
+          { model: User, as: 'user', attributes: ['username', 'name', 'surname', 'email', 'role'] },
+          { model: ActivityBooking, as: 'activityBooking' }
+        ]
+      });
+
+      // 3. Group schedule → booking → reviews
+      const grouped = {};
+      bookings.forEach(booking => {
+        const scheduleId = booking.activitySchedule.id;
+        if (!grouped[scheduleId]) {
+          grouped[scheduleId] = { schedule: booking.activitySchedule, bookings: {} };
+        }
+        grouped[scheduleId].bookings[booking.id] = {
+          booking,
+          reviews: reviews.filter(r => r.activity_booking_id === booking.id)
+        };
+      });
+
+      return new Result(StatusEnum.SUCCESS, 200, grouped);
+    } catch (error) {
+      console.error("Error grouping reviews:", error);
+      return new Result(StatusEnum.FAIL, 500, null, { message: error.message });
+    }
+  }
 }
 
 module.exports = new ActivityReviewService();

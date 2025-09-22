@@ -9,6 +9,42 @@
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
     <v-progress-linear v-if="loading" indeterminate class="mb-4" />
+
+
+    <v-dialog v-model="showValueDialog" max-width="500">
+  <v-card>
+    <v-card-title class="text-h6">
+      Adjust Recommendation Weight
+    </v-card-title>
+    <v-card-text>
+      <p class="mb-4">
+        The recommendation system uses this weight to decide how prominently
+        this activity appears to customers. Increasing the weight will push
+        the activity higher in suggestions.
+      </p>
+      <v-slider
+        v-model="selectedValue"
+        :min="1"
+        :max="10"
+        step="1"
+        ticks="always"
+        tick-size="4"
+        thumb-label="always"
+      />
+      <div class="text-center mt-2">
+        Current Weight: <strong>{{ selectedValue }}</strong> / 10
+      </div>
+    </v-card-text>
+    <v-card-actions>
+      <v-spacer />
+      <v-btn text @click="showValueDialog = false">Cancel</v-btn>
+      <v-btn color="primary" @click="confirmUpdateValue">
+        Save Weight
+      </v-btn>
+    </v-card-actions>
+  </v-card>
+</v-dialog>
+
     <!-- Activity Cards -->
 <v-card
   v-for="a in activities"
@@ -52,7 +88,11 @@
 
         <div v-else-if="store.role === 'manager'" class="d-flex flex-column ga-2">
           <v-btn variant="flat" @click="openAnalyticsDialog(a.id)">Analytics</v-btn>
-          <v-btn variant="flat">Increase Value</v-btn>
+          <v-btn small color="primary" @click="openValueDialog(a)">
+  Adjust Weight
+</v-btn>
+
+
           <v-btn variant="flat" @click="goToReviews(a.id)">See Reviews</v-btn>
           <v-btn variant="flat" @click="goToCustomers(a.id)">Customers</v-btn>
         </div>
@@ -162,6 +202,16 @@ const deleteDialog = reactive({ open: false, item: null });
 const snackbar = reactive({ open: false, msg: '' });
 const analyticsDialog = reactive({ open: false, activityId: null });
 const analyticsForm = reactive({ fromDate: '', toDate: '' });
+
+const showValueDialog = ref(false)
+const selectedActivityId = ref(null)
+const selectedValue = ref(5)
+
+function openValueDialog(activity) {
+  selectedActivityId.value = activity.id
+  selectedValue.value = activity.value ?? 5
+  showValueDialog.value = true
+}
 
 const form = reactive({
   name: '',
@@ -332,6 +382,19 @@ function goToReviews(activityId) {
 
 function goToCustomers(activityId) {
   router.push(`/activities/${activityId}/customers`);
+}
+
+async function confirmUpdateValue() {
+  try {
+    await axios.put(`/activities/${selectedActivityId.value}/value`, {
+      value: selectedValue.value
+    })
+    showValueDialog.value = false
+    // refresh list so UI updates with new value
+    await fetchActivities()
+  } catch (e) {
+    console.error('Failed to update recommendation weight', e)
+  }
 }
 
 onMounted(fetchActivities);

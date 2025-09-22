@@ -99,4 +99,21 @@ router.delete('/:id',
   }
 );
 
+// Update recommendation weight (value)
+router.put('/:id/value',
+  jwtParser.extractTokenUser,
+  async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized!' });
+    }
+
+    const { value } = req.body;
+    const result = await ActivityService.updateValue(req.params.id, value);
+    return res.status(result.code).json(
+      result.status === 'FAIL' ? { errors: result.errors } : result.data
+    );
+  }
+);
+
+
 module.exports = router;

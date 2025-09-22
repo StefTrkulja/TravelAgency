@@ -105,4 +105,32 @@ router.delete('/:id',
   }
 );
 
+const { Op } = require('sequelize');
+
+// Get grouped reviews by activity
+router.get('/activity/:activityId/grouped',
+  jwtParser.extractTokenUser,
+  async (req, res) => {
+    const filter = {};
+    if (req.query.firstName) {
+      filter['$user.name$'] = { [Op.iLike]: `%${req.query.firstName}%` };
+    }
+    if (req.query.lastName) {
+      filter['$user.surname$'] = { [Op.iLike]: `%${req.query.lastName}%` };
+    }
+    if (req.query.email) {
+      filter['$user.email$'] = { [Op.iLike]: `%${req.query.email}%` };
+    }
+
+    const result = await ActivityReviewService.getReviewsGroupedByActivityId(
+      req.params.activityId,
+      filter
+    );
+    return res
+      .status(result.code)
+      .json(result.status === 'FAIL' ? { errors: result.errors } : result.data);
+  }
+);
+
+
 module.exports = router;

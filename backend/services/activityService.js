@@ -92,6 +92,15 @@ class ActivityService {
       return new Result(StatusEnum.FAIL, 500, null, { message: error.message });
     }
   }
+
+    async updateValue(activityId, newValue) {
+  const act = await Activity.findByPk(activityId)
+  if (!act) return new Result(StatusEnum.FAIL, 404, null, [{ message: 'Activity not found' }])
+
+  act.value = newValue
+  await act.save()
+  return new Result(StatusEnum.OK, 200, act)
+}
 }
 
 module.exports = new ActivityService();
