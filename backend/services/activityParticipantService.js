@@ -106,6 +106,46 @@ class ActivityParticipantService {
       return new Result(StatusEnum.FAIL, 500, null, { message: error.message });
     }
   }
+
+
+ async getParticipantsGroupedByActivityId(activityId, filter = {}) {
+  try {
+    // 1. Load bookings that belong to this activity (through schedule)
+    const bookings = await ActivityBooking.findAll({
+      include: [{ model: ActivitySchedule, as: 'activitySchedule', where: { activity_id: activityId } }]
+    });
+
+    // 2. Load participants separately, with filters if provided
+    const participants = await ActivityBookingParticipant.findAll({
+      where: {
+        activity_booking_id: bookings.map(b => b.id),
+        ...filter
+      }
+    });
+
+    // 3. Build grouped structure: schedule -> booking -> participants
+    const grouped = {};
+    bookings.forEach(booking => {
+      const scheduleId = booking.activitySchedule.id;
+      if (!grouped[scheduleId]) {
+        grouped[scheduleId] = { schedule: booking.activitySchedule, bookings: {} };
+      }
+      grouped[scheduleId].bookings[booking.id] = {
+        booking,
+        participants: participants.filter(p => p.activity_booking_id === booking.id)
+      };
+    });
+
+    return new Result(StatusEnum.SUCCESS, 200, grouped);
+  } catch (error) {
+    console.error("Error grouping participants:", error);
+    return new Result(StatusEnum.FAIL, 500, null, { message: error.message });
+  }
 }
+
+
+}
+
+
 
 module.exports = new ActivityParticipantService();

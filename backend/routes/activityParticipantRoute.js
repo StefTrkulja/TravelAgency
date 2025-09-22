@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const jwtParser = require('../utils/jwtParser');
+const { Op } = require('sequelize');
 const ActivityParticipantService = require('../services/activityParticipantService');
 
 // Create participant
@@ -79,5 +80,32 @@ router.delete('/:id',
     return res.status(result.code).json(result.status === 'FAIL' ? { errors: result.errors } : result.data);
   }
 );
+
+// Get participants grouped by activity ID
+router.get('/activity/:activityId/grouped',
+  jwtParser.extractTokenUser,
+  async (req, res) => {
+    const filter = {};
+    if (req.query.firstName) {
+      filter.firstName = { [Op.iLike]: `%${req.query.firstName}%` };
+    }
+    if (req.query.lastName) {
+      filter.lastName = { [Op.iLike]: `%${req.query.lastName}%` };
+    }
+    if (req.query.email) {
+      filter.email = { [Op.iLike]: `%${req.query.email}%` };
+    }
+
+    const result = await ActivityParticipantService.getParticipantsGroupedByActivityId(
+      req.params.activityId,
+      filter
+    );
+    return res
+      .status(result.code)
+      .json(result.status === 'FAIL' ? { errors: result.errors } : result.data);
+  }
+);
+
+
 
 module.exports = router;
