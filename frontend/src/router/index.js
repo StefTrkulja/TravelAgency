@@ -11,6 +11,7 @@ import TravelerActivitiesView from '../views/TravelerActivitiesView.vue';
 import AnalyticsDetailsView from '../views/AnalyticsDetails.vue';
 import ActivityReviewsView from '../views/ActivityReviewsView.vue';
 import ActivityCustomersView from '../views/ActivityCustomerView.vue';
+import TravelerBookingsView from '../views/TravelerBookingsView.vue';
 import { ro } from 'vuetify/locale';
 
 
@@ -79,10 +80,11 @@ const routes = [
 { path: '/analytics', name: 'analytics', component: Analytics, meta: { roles: ['OPERATOR','SUPPLIER','MANAGER','ADMIN'] } },
   { path: '/arrangements/:arrangementId/activities', name: 'Activities', component: ActivitiesView },
   { path: '/activities/:activityId/schedules', name: 'ActivitySchedules', component: ActivitySchedulesView },
-  { path: '/traveler/activities', name: 'TravelerActivities', component: TravelerActivitiesView },
+  { path: '/traveler/booking/:bookingId/activities', name: 'TravelerActivities', component: TravelerActivitiesView },
   { path: '/activities/:activityId/analytics/:analyticsId', name: 'AnalyticsDetails', component: AnalyticsDetailsView },
   { path: '/activities/:activityId/reviews', name: 'ActivityReviews', component: ActivityReviewsView },
-  { path: '/activities/:activityId/customers', name: 'ActivityCustomers', component: ActivityCustomersView }
+  { path: '/activities/:activityId/customers', name: 'ActivityCustomers', component: ActivityCustomersView },
+  { path: '/traveler/booking', name: 'TravelerBookings', component: TravelerBookingsView },
 ];
 
 

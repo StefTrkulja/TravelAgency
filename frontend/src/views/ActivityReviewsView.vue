@@ -97,7 +97,7 @@ async function fetchGroupedReviews() {
     })
     groupedReviews.value = data
 
-    // optional: set activity name from first schedule if backend provides it
+
     const firstSchedule = Object.values(data)[0]
     if (firstSchedule?.schedule?.activityName) {
       activityName.value = firstSchedule.schedule.activityName

@@ -1,23 +1,29 @@
 <template>
   <v-container class="py-8">
     <!-- Arrangement header -->
-    <h2 class="text-h5 mb-4">Arrangement: Paris Summer Trip</h2>
-    <div class="d-flex mb-6">
-      <v-img
-        src="https://via.placeholder.com/180x120.png?text=Paris+Map"
-        alt="Map"
-        width="180"
-        class="mr-6"
-      />
-      <div>
-        <div><strong>City:</strong> Paris</div>
-        <div><strong>Country:</strong> France</div>
-        <v-card class="mt-4 pa-3" variant="outlined">
-          <div><strong>Travel Details:</strong></div>
-          <div>2 Adults, 1 child</div>
-          <div>32 years old …</div>
-        </v-card>
-      </div>
+<h2 class="text-h5 mb-4">
+  Arrangement: {{ arrangement?.title || 'Loading...' }}
+</h2>
+
+
+    <!-- New: Arrangement Booking Info -->
+    <div v-if="arrangement" class="mb-6">
+      <h3 class="text-h6">{{ arrangement.title }}</h3>
+      <p class="text-body-2">{{ arrangement.summary }}</p>
+
+      <v-card class="pa-4 my-4" variant="outlined">
+        <div><strong>Departure:</strong> {{ departure?.startDate }} → {{ departure?.endDate }}</div>
+        <div><strong>Destination:</strong> {{ arrangement.destination?.name }}</div>
+        <div><strong>Transport:</strong> {{ arrangement.transportType }}</div>
+        <div><strong>Accommodation:</strong> {{ arrangement.accommodationType }}</div>
+      </v-card>
+
+      <v-card class="pa-4 my-4" variant="outlined">
+        <div><strong>Booking Date:</strong> {{ booking.bookingDate }}</div>
+        <div><strong>Travelers:</strong> {{ booking.travelersCount }}</div>
+        <div><strong>Status:</strong> {{ booking.status }}</div>
+        <div><strong>Total Price:</strong> €{{ booking.grandTotal }}</div>
+      </v-card>
     </div>
 
     <!-- Activities -->
@@ -366,6 +372,9 @@
 import { ref, reactive, onMounted, computed } from 'vue';
 import axios from '@/utils/axiosInstance';
 import { store } from '@/utils/store';
+import { useRoute } from 'vue-router'
+const route = useRoute();
+const error = ref('')
 
 const arrangementId = 1; // Hardcoded Paris Summer Trip
 
@@ -731,6 +740,21 @@ function openReviewDialog(booking, mode = 'create') {
   reviewDialog.open = true;
 }
 
+const booking = ref(null)
+const departure = ref(null)
+const arrangement = ref(null)
+
+async function fetchBookingDetails() {
+  try {
+    const { data } = await axios.get(`/bookings/${route.params.bookingId}/details`)
+    booking.value = data
+    departure.value = data.departure
+    arrangement.value = data.departure?.arrangement
+  } catch (e) {
+    error.value = e?.response?.data?.message || 'Failed to load booking details'
+  }
+}
+
 async function saveReview(e) {
   if (e?.preventDefault) e.preventDefault();
   try {
@@ -785,7 +809,9 @@ async function deleteReview(booking) {
 
 
 onMounted(async () => {
-  await fetchActivities();
-  await fetchBookings();
-});
+  await fetchBookingDetails()
+  await fetchActivities()
+  await fetchBookings()
+})
+
 </script>

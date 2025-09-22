@@ -47,18 +47,27 @@ class BookingService {
     }
   }
 
-  async getBookingsByUser(username) {
-    try {
-      const bookings = await Booking.findAll({
-        where: { userUsername: username },
-        include: [{ model: Departure, as: 'departure' }]
-      });
-      return new Result(StatusEnum.SUCCESS, 200, bookings);
-    } catch (error) {
-      console.error("Error fetching bookings by user:", error);
-      return new Result(StatusEnum.FAIL, 500, null, { message: error.message });
-    }
+async getBookingsByUser(username) {
+  try {
+    const bookings = await Booking.findAll({
+      where: { userUsername: username },
+      include: [
+        {
+          model: Departure,
+          as: 'departure',
+          include: [
+            { model: sequelize.models.TravelArrangement, as: 'arrangement' }
+          ]
+        }
+      ]
+    })
+    return new Result(StatusEnum.SUCCESS, 200, bookings)
+  } catch (error) {
+    console.error("Error fetching bookings by user:", error)
+    return new Result(StatusEnum.FAIL, 500, null, { message: error.message })
   }
+}
+
 
   async getBookingsByDeparture(departureId) {
     try {
