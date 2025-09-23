@@ -9,6 +9,7 @@ const activityRecommendationService = require('../services/activityRecommendatio
 router.get('/recommendations/:bookingId/:arrangementId', async (req, res) => {
   try {
     const { bookingId, arrangementId } = req.params;
+    console.log(`Recommendations route hit: GET /api/activities/recommendations/${bookingId}/${arrangementId}`);
     
     if (!bookingId || !arrangementId) {
       return res.status(400).json({
@@ -22,7 +23,15 @@ router.get('/recommendations/:bookingId/:arrangementId', async (req, res) => {
       parseInt(arrangementId)
     );
 
-    if (result.status === 'SUCCESS') {
+    console.log(`Recommendation result: ${result.status}, data count: ${result.data?.length || 0}`);
+    console.log('Recommendation data sample:', result.data?.[0] ? {
+      id: result.data[0].id,
+      name: result.data[0].name,
+      score: result.data[0].recommendationScore,
+      reasons: result.data[0].recommendationReasons
+    } : 'No data');
+
+    if (result.status === 'OK') {
       res.status(result.code).json({
         success: true,
         data: result.data,
@@ -65,7 +74,7 @@ router.get('/recommendations/:bookingId/:arrangementId/detailed', async (req, re
       parseInt(arrangementId)
     );
 
-    if (result.status === 'SUCCESS') {
+    if (result.status === 'OK') {
       // Add additional detailed information for debugging/admin purposes
       const detailedData = result.data.map(activity => ({
         ...activity,

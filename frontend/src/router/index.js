@@ -43,6 +43,9 @@ const Approvals = () => import('@/views/Approvals.vue')
 // Analytics
 const Analytics = () => import('@/views/Analytics.vue')
 
+// Calendar
+const ActivityCalendarView = () => import('@/views/ActivityCalendarView.vue')
+
 
 
 // Define your routes
@@ -72,12 +75,15 @@ const routes = [
 
 
 // Manager
-{ path: '/mgr', name: 'mgr-home', component: ManagerHome, meta: { roles: ['MANAGER','ADMIN'] } },
-{ path: '/mgr/approvals', name: 'mgr-approvals', component: Approvals, meta: { roles: ['MANAGER','ADMIN','OPERATOR'] } },
+{ path: '/mgr', name: 'mgr-home', component: ManagerHome, meta: { roles: ['MANAGER','ADMIN','manager','admin'] } },
+{ path: '/mgr/approvals', name: 'mgr-approvals', component: Approvals, meta: { roles: ['MANAGER','ADMIN','OPERATOR','manager','admin','operator'] } },
 
 
 // Analytics (everyone logged-in can see; or restrict to MANAGER/ADMIN)
 { path: '/analytics', name: 'analytics', component: Analytics, meta: { roles: ['OPERATOR','SUPPLIER','MANAGER','ADMIN'] } },
+
+// Calendar - Activity Schedule Management
+{ path: '/calendar', name: 'activity-calendar', component: ActivityCalendarView, meta: { roles: ['MANAGER','ADMIN','OPERATOR','manager','admin','operator'] } },
   { path: '/arrangements/:arrangementId/activities', name: 'Activities', component: ActivitiesView },
   { path: '/activities/:activityId/schedules', name: 'ActivitySchedules', component: ActivitySchedulesView },
   { path: '/traveler/booking/:bookingId/activities', name: 'TravelerActivities', component: TravelerActivitiesView },
@@ -104,7 +110,7 @@ router.beforeEach((to, from, next) => {
   }
 
   // Check if the route has specific role requirements
-  if (to.meta.role && !to.meta.role.includes(userRole)) {
+  if (to.meta.roles && !to.meta.roles.includes(userRole)) {
     return next('/');
   }
 

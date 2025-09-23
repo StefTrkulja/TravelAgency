@@ -26,15 +26,17 @@
         <v-list-item to="/op/inquiries"    prepend-icon="mdi-send"            title="Pošalji upit" />
         <v-list-item to="/op/inquiries/list" prepend-icon="mdi-format-list-bulleted" title="Moji upiti" />
         <v-list-item to="/op/destinations" prepend-icon="mdi-map-marker"      title="Destinacije" />
+        <v-list-item to="/calendar" prepend-icon="mdi-calendar-month" title="Activity Calendar" />
 </template>
 
       <template v-else-if="store.role==='SUPPLIER'">
         <v-list-item to="/sup/inbox" prepend-icon="mdi-inbox" title="Zahtevi/Upiti" />
       </template>
 
-      <template v-else-if="store.role==='MANAGER'">
-        <v-list-item to="/mgr/approvals" prepend-icon="mdi-check-decagram" title="Odobrenja" />
-        <v-list-item to="/analytics" prepend-icon="mdi-chart-line" title="Analitika" />
+      <template v-else-if="store.role==='manager'">
+        <!-- <v-list-item to="/mgr/approvals" prepend-icon="mdi-check-decagram" title="Odobrenja" />
+        <v-list-item to="/analytics" prepend-icon="mdi-chart-line" title="Analitika" /> -->
+        <v-list-item to="/calendar" prepend-icon="mdi-calendar-month" title="Activity Calendar" />
       </template>
 
       <template v-else-if="store.role==='ADMIN'">
@@ -79,6 +81,11 @@
     <v-card class="pa-4" link to="/op/inquiries/list"
             title="Moji upiti" subtitle="Pregled & ponude" />
   </v-col>
+
+  <v-col cols="12" md="3">
+    <v-card class="pa-4" link to="/calendar"
+            title="Activity Calendar" subtitle="Schedule Management" />
+  </v-col>
 </v-row>
 
 
@@ -87,14 +94,16 @@
     </v-row>
 
     <v-row v-else-if="store.role==='MANAGER'">
-      <v-col cols="12" md="6"><v-card class="pa-4" to="/mgr/approvals" title="Odobrenja" subtitle="Pregled i odluka" /></v-col>
-      <v-col cols="12" md="6"><v-card class="pa-4" to="/analytics" title="Analitika" subtitle="KPIs" /></v-col>
+      <v-col cols="12" md="4"><v-card class="pa-4" to="/mgr/approvals" title="Odobrenja" subtitle="Pregled i odluka" /></v-col>
+      <v-col cols="12" md="4"><v-card class="pa-4" to="/analytics" title="Analitika" subtitle="KPIs" /></v-col>
+      <v-col cols="12" md="4"><v-card class="pa-4" to="/calendar" title="Activity Calendar" subtitle="Schedule Management" /></v-col>
     </v-row>
 
     <v-row v-else-if="store.role==='ADMIN'">
-      <v-col cols="12" md="4"><v-card class="pa-4" to="/op/destinations" title="Destinacije" /></v-col>
-      <v-col cols="12" md="4"><v-card class="pa-4" to="/mgr/approvals" title="Odobrenja" /></v-col>
-      <v-col cols="12" md="4"><v-card class="pa-4" to="/analytics" title="Analitika" /></v-col>
+      <v-col cols="12" md="3"><v-card class="pa-4" to="/op/destinations" title="Destinacije" /></v-col>
+      <v-col cols="12" md="3"><v-card class="pa-4" to="/mgr/approvals" title="Odobrenja" /></v-col>
+      <v-col cols="12" md="3"><v-card class="pa-4" to="/analytics" title="Analitika" /></v-col>
+      <v-col cols="12" md="3"><v-card class="pa-4" to="/calendar" title="Activity Calendar" /></v-col>
     </v-row>
 
     <v-row v-else>

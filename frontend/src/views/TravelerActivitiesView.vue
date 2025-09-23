@@ -467,8 +467,7 @@ import { useRoute } from 'vue-router'
 const route = useRoute();
 const error = ref('')
 
-const arrangementId = 1; // Hardcoded Paris Summer Trip
-
+// Get arrangementId from the booking data, not hardcoded
 const activities = ref([]);
 const recommendedActivities = ref([]);
 const schedules = reactive({});
@@ -524,13 +523,32 @@ function formatDate(dt) {
   return new Date(dt).toLocaleString();
 }
 
+function isScheduleWithinArrangementPeriod(schedule) {
+  if (!departure.value || !schedule) return true; // Default to allow if no departure info
+  
+  const scheduleDate = new Date(schedule.startTime || schedule.label.split(' → ')[0]);
+  const departureStart = new Date(departure.value.startDate);
+  const departureEnd = new Date(departure.value.endDate || departure.value.startDate);
+  
+  return scheduleDate >= departureStart && scheduleDate <= departureEnd;
+}
+
 async function fetchRecommendations() {
   try {
-    if (!booking.value?.id) return;
+    if (!booking.value?.id || !arrangement.value?.id) {
+      console.log("Missing booking or arrangement data for recommendations");
+      return;
+    }
     
-    const { data } = await axios.get(`/activities/recommendations/${booking.value.id}/${arrangementId}`);
-    if (data.success) {
-      recommendedActivities.value = data.data || [];
+    console.log(`Fetching recommendations for booking ${booking.value.id} and arrangement ${arrangement.value.id}`);
+    const { data } = await axios.get(`/activities/recommendations/${booking.value.id}/${arrangement.value.id}`);
+    
+    // Backend returns { success: true, data: [...] } or just the data array
+    const recommendationsData = data.success ? data.data : data;
+    
+    if (recommendationsData && Array.isArray(recommendationsData)) {
+      recommendedActivities.value = recommendationsData;
+      console.log(`Found ${recommendedActivities.value.length} recommended activities:`, recommendedActivities.value);
       
       // Load schedules for recommended activities
       for (const activity of recommendedActivities.value) {
@@ -551,12 +569,16 @@ async function fetchRecommendations() {
           schedules[activity.id] = scheduleItems;
         }
       }
+    } else {
+      console.log("No recommendations received or invalid format");
     }
   } catch (err) {
     console.error("Failed to load recommendations", err);
     // Fallback: try to show high-value activities
     try {
-      const { data } = await axios.get(`/activities/arrangement/${arrangementId}`);
+      if (!arrangement.value?.id) return;
+      
+      const { data } = await axios.get(`/activities/arrangement/${arrangement.value.id}`);
       const highValueActivities = data
         .filter(a => a.value > 5)
         .sort((a, b) => b.value - a.value)
@@ -568,6 +590,7 @@ async function fetchRecommendations() {
           recommendationScore: Math.round(activity.value * 10),
           recommendationReasons: [`Highly rated (${activity.value}/10)`]
         }));
+        console.log(`Using fallback: ${recommendedActivities.value.length} high-value activities`);
       }
     } catch (fallbackErr) {
       console.error("Fallback recommendation failed", fallbackErr);
@@ -577,7 +600,12 @@ async function fetchRecommendations() {
 
 async function fetchActivities() {
   try {
-    const { data } = await axios.get(`/activities/arrangement/${arrangementId}`);
+    if (!arrangement.value?.id) {
+      console.log("Missing arrangement data for activities");
+      return;
+    }
+    
+    const { data } = await axios.get(`/activities/arrangement/${arrangement.value.id}`);
     
     // Filter out recommended activities from the main list to avoid duplicates
     const recommendedIds = new Set(recommendedActivities.value.map(a => a.id));
@@ -613,8 +641,13 @@ async function fetchActivities() {
 
 async function fetchBookings() {
   try {
+    if (!arrangement.value?.id) {
+      console.log("Missing arrangement data for bookings");
+      return;
+    }
+    
     const { data } = await axios.get(`/activities/bookings/user/${store.username}`);
-    const mine = data.filter(b => b.arrangement_booking_id === arrangementId);
+    const mine = data.filter(b => b.arrangement_booking_id === arrangement.value.id);
 
     // attach my review (if any) to each booking
     const withReviews = await Promise.all(
@@ -664,11 +697,18 @@ async function saveBooking(e) {
     return;
   }
 
+  // Check for arrangement booking conflicts
+  if (!isScheduleWithinArrangementPeriod(schedule)) {
+    snackbar.msg = 'This activity is scheduled outside your travel dates. Please contact support.';
+    snackbar.open = true;
+    return;
+  }
+
   try {
     const payload = {
       activity_schedule_id: bookingForm.scheduleId,
       numberOfParticipants: bookingForm.participants,
-      arrangement_booking_id: arrangementId,
+      arrangement_booking_id: arrangement.value?.id || booking.value?.id,
       petsIncluded: false,
       bookingDate: new Date().toISOString(),
       totalPrice: 50 * bookingForm.participants,
@@ -810,7 +850,7 @@ async function nextStep() {
     const payload = {
       activity_schedule_id: bookingForm.scheduleId,
       numberOfParticipants: bookingForm.participants,
-      arrangement_booking_id: arrangementId,
+      arrangement_booking_id: arrangement.value?.id || booking.value?.id,
       petsIncluded: false,
       bookingDate: new Date().toISOString(),
       totalPrice: 50 * bookingForm.participants,
@@ -898,8 +938,14 @@ async function fetchBookingDetails() {
     booking.value = data
     departure.value = data.departure
     arrangement.value = data.departure?.arrangement
+    console.log('Booking details loaded:', {
+      bookingId: data.id,
+      arrangementId: arrangement.value?.id,
+      arrangementTitle: arrangement.value?.title
+    });
   } catch (e) {
     error.value = e?.response?.data?.message || 'Failed to load booking details'
+    console.error('Error fetching booking details:', e);
   }
 }
 
@@ -958,6 +1004,7 @@ async function deleteReview(booking) {
 
 onMounted(async () => {
   await fetchBookingDetails()
+  // Only fetch recommendations after we have booking and arrangement data
   await fetchRecommendations()
   await fetchActivities()
   await fetchBookings()

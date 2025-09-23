@@ -12,6 +12,7 @@
             <v-col cols="12" md="3"><v-card class="pa-4" to="/op/destinations" title="Destinacije" /></v-col>
             
             <v-col cols="12" md="3"><v-card class="pa-4" to="/analytics" title="Analitika" /></v-col>
+            <v-col cols="12" md="3"><v-card class="pa-4" to="/calendar" title="Activity Calendar" subtitle="Schedule Management" /></v-col>
         </v-row>
     </v-container>
 </template>

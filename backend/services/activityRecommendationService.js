@@ -51,7 +51,7 @@ class ActivityRecommendationService {
         .sort((a, b) => b.recommendationScore - a.recommendationScore)
         .slice(0, 2);
 
-      return new Result(StatusEnum.SUCCESS, 200, topRecommendations);
+      return new Result(StatusEnum.OK, 200, topRecommendations);
     } catch (error) {
       console.error("Error getting activity recommendations:", error);
       return new Result(StatusEnum.FAIL, 500, null, { message: error.message });

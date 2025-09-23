@@ -35,6 +35,7 @@ const activityReviewRoute = require('./routes/activityReviewRoute');
 const analyticsRoute = require('./routes/activityAnalyticsRoute');
 const activityRecommendationsRoute = require('./routes/activityRecommendationsRoute');
 const bookingRoute = require('./routes/bookingRoute');
+const calendarRoute = require('./routes/calendarRoute');
 
 
 const app = express();
@@ -59,6 +60,7 @@ app.use('/api/activities/participants', participantRoute);
 app.use('/api/activities/reviews', activityReviewRoute);
 app.use('/api/activities/analytics', analyticsRoute);
 app.use('/api/activities', activityRecommendationsRoute);
+app.use('/api/calendar', calendarRoute);
 app.use('/api/user', userRoute);
 app.use('/api/arrangements', require('./routes/arrangements.routes'));
 app.use('/api/offers', require('./routes/offers.routes'));
