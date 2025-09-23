@@ -26,8 +26,99 @@
       </v-card>
     </div>
 
+    <!-- Recommended Activities Section -->
+    <div v-if="recommendedActivities.length > 0" class="mb-6">
+      <h3 class="text-h6 mb-3 d-flex align-center">
+        <v-icon class="mr-2" color="orange">mdi-star</v-icon>
+        Recommended for You
+      </h3>
+      <v-row>
+        <v-col
+          v-for="activity in recommendedActivities"
+          :key="`rec-${activity.id}`"
+          cols="12" sm="6"
+        >
+          <v-card 
+            variant="outlined" 
+            class="pa-3 recommendation-card"
+            :style="{ border: '2px solid orange', backgroundColor: '#fff9c4' }"
+          >
+            <!-- Recommendation badge -->
+            <v-chip
+              color="orange"
+              variant="flat"
+              size="small"
+              class="mb-2"
+              prepend-icon="mdi-star"
+            >
+              Recommended ({{ activity.recommendationScore }}/100)
+            </v-chip>
+
+            <!-- Activity image -->
+            <v-img
+              v-if="activity.imagePath"
+              :src="`http://localhost:3000/${activity.imagePath}`"
+              alt="Activity image"
+              height="160"
+              class="rounded mb-3"
+              cover
+            />
+            <v-img
+              v-else
+              src="https://via.placeholder.com/240x120.png?text=No+Image"
+              alt="No image available"
+              height="160"
+              class="rounded mb-3"
+              cover
+            />
+
+            <!-- Info -->
+            <div class="text-subtitle-1 font-weight-bold">{{ activity.name }}</div>
+            <div class="text-body-2 mb-2">{{ activity.description }}</div>
+
+            <!-- Recommendation reasons -->
+            <div v-if="activity.recommendationReasons?.length" class="mb-3">
+              <div class="text-caption font-weight-medium mb-1">Why we recommend this:</div>
+              <v-chip
+                v-for="reason in activity.recommendationReasons"
+                :key="reason"
+                size="x-small"
+                variant="outlined"
+                color="orange"
+                class="mr-1 mb-1"
+              >
+                {{ reason }}
+              </v-chip>
+            </div>
+
+            <!-- Timeslot dropdown -->
+            <v-select
+              v-model="selectedSchedule[activity.id]"
+              :items="schedules[activity.id] || []"
+              item-title="label"
+              item-value="id"
+              label="Timeslot"
+            />
+
+            <!-- Show remaining only if a schedule is selected -->
+            <div v-if="selectedSchedule[activity.id]" class="text-caption mb-2">
+              Remaining spots:
+              {{
+                (schedules[activity.id].find(s => s.id === selectedSchedule[activity.id])?.remaining) ?? 'N/A'
+              }}
+            </div>
+
+            <!-- Book button -->
+            <v-btn color="orange" class="mt-2" type="button" @click="openBookingDialog(activity)">
+              Book Recommended Activity
+            </v-btn>
+          </v-card>
+        </v-col>
+      </v-row>
+    </div>
+
     <!-- Activities -->
-    <h3 class="text-h6 mb-3">Activities</h3>
+    <h3 class="text-h6 mb-3">All Activities</h3>
     <v-row>
 <v-col
   v-for="a in visibleActivities"
@@ -379,6 +470,7 @@ const error = ref('')
 const arrangementId = 1; // Hardcoded Paris Summer Trip
 
 const activities = ref([]);
+const recommendedActivities = ref([]);
 const schedules = reactive({});
 const bookings = ref([]);
 
@@ -432,30 +524,86 @@ function formatDate(dt) {
   return new Date(dt).toLocaleString();
 }
 
+async function fetchRecommendations() {
+  try {
+    if (!booking.value?.id) return;
+    
+    const { data } = await axios.get(`/activities/recommendations/${booking.value.id}/${arrangementId}`);
+    if (data.success) {
+      recommendedActivities.value = data.data || [];
+      
+      // Load schedules for recommended activities
+      for (const activity of recommendedActivities.value) {
+        if (!schedules[activity.id]) {
+          const res = await axios.get(`/activities/schedules/activity/${activity.id}`);
+          const scheduleItems = [];
+          for (const s of res.data) {
+            const bookingsRes = await axios.get(`/activities/bookings/schedule/${s.id}`);
+            const totalBooked = bookingsRes.data.reduce((sum, b) => sum + b.numberOfParticipants, 0);
+            const remaining = activity.maxCapacity - totalBooked;
+
+            scheduleItems.push({
+              id: s.id,
+              label: `${formatDate(s.startTime)} → ${formatDate(s.endTime)}`,
+              remaining
+            });
+          }
+          schedules[activity.id] = scheduleItems;
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Failed to load recommendations", err);
+    // Fallback: try to show high-value activities
+    try {
+      const { data } = await axios.get(`/activities/arrangement/${arrangementId}`);
+      const highValueActivities = data
+        .filter(a => a.value > 5)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 2);
+      
+      if (highValueActivities.length > 0) {
+        recommendedActivities.value = highValueActivities.map(activity => ({
+          ...activity,
+          recommendationScore: Math.round(activity.value * 10),
+          recommendationReasons: [`Highly rated (${activity.value}/10)`]
+        }));
+      }
+    } catch (fallbackErr) {
+      console.error("Fallback recommendation failed", fallbackErr);
+    }
+  }
+}
+
 async function fetchActivities() {
   try {
     const { data } = await axios.get(`/activities/arrangement/${arrangementId}`);
-    activities.value = data;
+    
+    // Filter out recommended activities from the main list to avoid duplicates
+    const recommendedIds = new Set(recommendedActivities.value.map(a => a.id));
+    activities.value = data.filter(a => !recommendedIds.has(a.id));
 
     for (const a of data) {
-      // load schedules
-      const res = await axios.get(`/activities/schedules/activity/${a.id}`);
+      // load schedules for all activities (including recommended ones not yet processed)
+      if (!schedules[a.id]) {
+        const res = await axios.get(`/activities/schedules/activity/${a.id}`);
 
-      // for each schedule, load bookings to calculate remaining spots
-      const scheduleItems = [];
-      for (const s of res.data) {
-        const bookingsRes = await axios.get(`/activities/bookings/schedule/${s.id}`);
-        const totalBooked = bookingsRes.data.reduce((sum, b) => sum + b.numberOfParticipants, 0);
-        const remaining = a.maxCapacity - totalBooked;
+        // for each schedule, load bookings to calculate remaining spots
+        const scheduleItems = [];
+        for (const s of res.data) {
+          const bookingsRes = await axios.get(`/activities/bookings/schedule/${s.id}`);
+          const totalBooked = bookingsRes.data.reduce((sum, b) => sum + b.numberOfParticipants, 0);
+          const remaining = a.maxCapacity - totalBooked;
 
-        scheduleItems.push({
-          id: s.id,
-          label: `${formatDate(s.startTime)} → ${formatDate(s.endTime)}`,
-          remaining
-        });
+          scheduleItems.push({
+            id: s.id,
+            label: `${formatDate(s.startTime)} → ${formatDate(s.endTime)}`,
+            remaining
+          });
+        }
+
+        schedules[a.id] = scheduleItems;
       }
-
-      schedules[a.id] = scheduleItems;
     }
   } catch (err) {
     console.error("Failed to load activities", err);
@@ -810,8 +958,24 @@ async function deleteReview(booking) {
 
 onMounted(async () => {
   await fetchBookingDetails()
+  await fetchRecommendations()
   await fetchActivities()
   await fetchBookings()
 })
 
 </script>
+
+<style scoped>
+.recommendation-card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.recommendation-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+}
+
+.recommendation-card .v-chip {
+  font-weight: 500;
+}
+</style>

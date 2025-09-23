@@ -26,13 +26,13 @@ module.exports = (sequelize, DataTypes) => {
 
   BookingParticipant.init({
     id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
-    firstName: { type: DataTypes.STRING, allowNull: false },
-    lastName: { type: DataTypes.STRING, allowNull: false },
+    firstName: { type: DataTypes.STRING, allowNull: false, field: 'firstname' },
+    lastName: { type: DataTypes.STRING, allowNull: false, field: 'lastname' },
     email: { type: DataTypes.STRING, allowNull: false },
-    dateOfBirth: { type: DataTypes.DATEONLY, allowNull: true },
-    specialRequirements: { type: DataTypes.STRING, allowNull: true },
+    dateOfBirth: { type: DataTypes.DATEONLY, allowNull: true, field: 'dateofbirth' },
+    specialRequirements: { type: DataTypes.STRING, allowNull: true, field: 'specialrequirements' },
     allergy: { type: DataTypes.ENUM(...ALLERGY), allowNull: true },
-    medicalCondition: { type: DataTypes.ENUM(...MEDICAL_CONDITION), allowNull: true },
+    medicalCondition: { type: DataTypes.ENUM(...MEDICAL_CONDITION), allowNull: true, field: 'medicalcondition' },
     preferences: { type: DataTypes.STRING, allowNull: true },
   }, {
     sequelize,
