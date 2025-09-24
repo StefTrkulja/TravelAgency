@@ -4,6 +4,7 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class Reservation extends Model {
     static associate(models) {
+
       // Veza: jedna rezervacija pripada jednom korisniku (customer)
       Reservation.belongsTo(models.User, { 
         foreignKey: 'customerUsername',
@@ -16,10 +17,12 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'reservationId', 
         as: 'complaints' 
       });
+
     }
   }
 
   Reservation.init({
+
     id: { 
       type: DataTypes.BIGINT, 
       autoIncrement: true, 
@@ -42,11 +45,12 @@ module.exports = (sequelize, DataTypes) => {
       onUpdate: 'CASCADE',
       onDelete: 'SET NULL'
     },
+
   }, {
     sequelize,
     modelName: 'Reservation',
     tableName: 'reservations',
-    timestamps: false,
+    timestamps: true,
   });
 
   return Reservation;
