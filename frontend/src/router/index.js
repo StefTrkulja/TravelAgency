@@ -73,7 +73,7 @@ const routes = [
   { path: '/manager/tickets/:id', name: 'ManagerTicketDetails', component: ManagerTicketDetails, meta: { requiresAuth: true, role: ['manager'] }},
   { path: '/escalations', name: 'EscalationsView', component: EscalationsView, meta: { requiresAuth: true, role: ['manager'] }},
   { path: '/compensations', name: 'CompensationsView', component: CompensationsView, meta: { requiresAuth: true, role: ['manager'] }},
-  { path: '/operator/triage/:id', name: 'ComplaintTriage', component: () => import('@/views/Operator/ComplaintTriage.vue') }
+  { path: '/operator/triage/:id', name: 'ComplaintTriage', component: () => import('@/views/Operator/ComplaintTriage.vue') },
 
 
   { path: '/anjaHomeView', name: 'AdminHomePage', component: AdminHomePage },
