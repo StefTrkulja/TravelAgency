@@ -113,7 +113,7 @@ export default {
     return {
       headers: [
         { title: 'Case ID',           key: 'id',               sortable: true, width: 110 },
-        { title: 'Assigned Operator', key: 'assigneeUsername', sortable: true, width: 180 },
+        { title: 'Assigned Manager', key: 'assigneeUsername', sortable: true, width: 180 },
         { title: 'Escalation Reason', key: 'reason',           sortable: false, width: 220 },
         { title: 'Date Escalated',    key: 'dateEscalated',    sortable: true, width: 180 },
         { title: 'Status',            key: 'status',       sortable: true, width: 140 },
@@ -195,14 +195,16 @@ export default {
       ? payload
       : (Array.isArray(payload?.data) ? payload.data : [])
 
+      console.log('Normalized escalation list:', list);
     // (opciono) normalizuj polja za tabelu
     this.escalationsRaw = list.map(it => ({
       id: it.id,
-      assigneeUsername: it.assigneeUsername ?? it.assignee ?? null,
+      assigneeUsername: it.managerUsername ?? it.assignee ?? null,
       reason: it.reason ?? it.escalationReason ?? null,
       dateEscalated: it.dateEscalated ?? it.escalatedAt ?? it.createdAt ?? null,
       statusName: it.statusName ?? it.status?.name ?? it.statusCode ?? null,
       status: it.status ?? null, // zadrži ako negde koristiš
+      complaintId: it.complaintId ?? it.ticketId ?? null,
       // ...preslikaj još šta ti treba
     }))
   } catch (e) {
@@ -216,7 +218,8 @@ export default {
 
     /* ==================== Actions ==================== */
     viewTicket(item) {
-      this.$router.push({ name: 'ManagerTicketDetails', params: { id: item.id } })
+      console.log('Viewing ticket', item)
+      this.$router.push({ name: 'ManagerTicketDetails', params: { id: item.complaintId } })
     },
 
     /* ==================== Helpers ==================== */
@@ -225,7 +228,7 @@ export default {
       try { return new Date(d).toLocaleString() } catch { return String(d) }
     },
 
-    goTickets()        { this.$router.push({ name: 'OperatorTicketsView' }) },
+    goTickets()        { this.$router.push({ name: 'ManagerTicketsView' }) },
     goCompensations()  { this.$router.push({ name: 'CompensationsView' }) },
     goAnalytics()      { this.$router.push({ name: 'Analytics' }) },
   },

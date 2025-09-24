@@ -19,12 +19,10 @@ class StatusTransitionService {
   /** Vrati sve dozvoljene naredne statuse za dati fromStatusId */
   async getAllowedNext(fromStatusId, { transaction } = {}) {
     try {
-      console.log("Ulazim u servis za tranziciju sa fromStatusId: ", fromStatusId);
       const rows = await StatusTransition.findAll({
         where: { fromStatusId },
         transaction,
       });
-      console.log("Nadjene tranzicije: ", rows);  
       return new Result(StatusEnum.OK, 200, rows);
     } catch (e) {
       return new Result(StatusEnum.FAIL, 500, null, parseSequelizeErrors(e));

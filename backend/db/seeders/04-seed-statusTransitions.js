@@ -18,14 +18,18 @@ module.exports = {
       { id: 8, fromStatusId: 3, toStatusId: 2 },
       { id: 9, fromStatusId: 3, toStatusId: 6 },
 
-      // ESCALATED → In progress / Closed / Rejected
-      { id: 10, fromStatusId: 4, toStatusId: 2 },
+      // ESCALATED →  Closed / Rejected
       { id: 11, fromStatusId: 4, toStatusId: 5 },
       { id: 12, fromStatusId: 4, toStatusId: 6 },
 
-      // CLOSED → (terminal, no outgoing transitions)
-      // REJECTED → (terminal, no outgoing transitions)
-    ]);
+      // ➕ NEW → Pending (accept & set priority)
+      { id: 13, fromStatusId: 7, toStatusId: 1 },
+
+      // ➕ (opciono) NEW → Rejected (ako odmah odbijete u triage)
+      { id: 14, fromStatusId: 7, toStatusId: 6 },
+
+      // CLOSED / REJECTED → terminal (nema izlaza)
+    ], {});
   },
 
   async down(queryInterface, Sequelize) {

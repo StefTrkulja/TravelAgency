@@ -6,7 +6,6 @@ module.exports = (sequelize, DataTypes) => {
   class Compensation extends Model {
     static associate(models) {
       Compensation.belongsTo(models.Complaint, { foreignKey: 'complaintId', as: 'complaint' });
-      Compensation.hasOne(models.CompensationApproval, { foreignKey: 'compensationId', as: 'approval' });
       Compensation.belongsTo(models.User, { foreignKey: 'managerUsername', targetKey: 'username', as: 'manager' });
 
     }

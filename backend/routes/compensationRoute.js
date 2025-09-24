@@ -5,14 +5,43 @@ const jwtParser = require('../utils/jwtParser');
 const ms = require('ms');
 const express = require('express');
 const router = express.Router();
+const ComplaintService = require('../services/complaintService');
+
+
+
+router.get('/all', jwtParser.extractTokenUser, async (req, res) => {
+	const user = req.user;
+	if (!user || user.role !== 'manager') {
+		return res.status(403).json({message: 'Forbidden'});
+	}
+	const result = await CompensationService.getAllCompensations();
+	if (result.status === StatusEnum.FAIL) {
+			return res.status(result.code).json({ errors: result.errors });
+	}
+	const complaints = await ComplaintService.getAllComplaints();
+	if (complaints.status === StatusEnum.FAIL) {
+			return res.status(complaints.code).json({ errors: complaints.errors });
+	}
+	const compensationsWithComplaints = result.data.map(comp => {
+		const complaint = complaints.data.find(c => c.id === comp.complaintId);
+		return {
+			...comp.dataValues,
+			complaint: complaint || null
+		};
+	});
+	return res.status(result.code).json(compensationsWithComplaints);
+
+});
+
+
 
 router.post('/:id/propose', jwtParser.extractTokenUser, async (req, res) => {
 	const user = req.user;
-	if (!user || user.role !== 'operator') {
+	if (!user || user.role !== 'operator' && user.role !== 'manager') {
 		return res.status(403).json({message: 'Forbidden'});
 	}
+	console.log("Req body", req.body)
 	const complainId = req.params.id;
-	console.log("staeovo:", req.body) 
 	const compensation = {
 		complaintId: complainId,
 		currency: req.body.currency,
@@ -38,7 +67,7 @@ router.get('/:id', jwtParser.extractTokenUser, async (req, res) => {
 		return res.status(403).json({message: 'Forbidden'});
 	}
 	const complainId = req.params.id;
-	const result = await CompensationService.getCompensationByComplaintId(complainId);
+	const result = await CompensationService.getCompensationsByComplaintId(complainId);
 	if (result.status === StatusEnum.FAIL) {
 			return res.status(result.code).json({ errors: result.errors });
 		}
@@ -51,9 +80,9 @@ router.post('/:id/reject', jwtParser.extractTokenUser, async (req, res) => {
 	if (!user || user.role !== 'manager') {
 		return res.status(403).json({message: 'Forbidden'});
 	}
-	const complainId = req.params.id;
+	const compensationId = req.params.id;
 	// Fetch the compensation
-	const result = await CompensationService.getCompensationByComplaintId(complainId);
+	const result = await CompensationService.getCompensationById(compensationId);
 	if (result.status === StatusEnum.FAIL) {
 			return res.status(result.code).json({ errors: result.errors });
 		}
@@ -71,14 +100,17 @@ router.post('/:id/reject', jwtParser.extractTokenUser, async (req, res) => {
 });
 
 
+// Hocu da mi za svaku kompenzaciju vratis i podatke o complaint kojom je vezana
+
+
 router.post('/:id/approve', jwtParser.extractTokenUser, async (req, res) => {
 	const user = req.user;
 	if (!user || user.role !== 'manager') {
 		return res.status(403).json({message: 'Forbidden'});
 	}
-	const complainId = req.params.id;
+	const compensationId = req.params.id;
 	// Fetch the compensation
-	const result = await CompensationService.getCompensationByComplaintId(complainId);
+	const result = await CompensationService.getCompensationById(compensationId);
 	if (result.status === StatusEnum.FAIL) {
 			return res.status(result.code).json({ errors: result.errors });
 		}

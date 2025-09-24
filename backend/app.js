@@ -10,9 +10,11 @@ const complaintRoute = require('./routes/complaintRoute');
 const statusRoute = require('./routes/statusRoute');
 const escalationRoute = require('./routes/escalationRoute');
 const compensationRoute = require('./routes/compensationRoute');	
+const slaParameterRoute = require('./routes/slaParameterRoute');
 const sequelize = require('./models/index').sequelize;
 const { register } = require('./utils/metrics');
 const path = require('path');
+
 
 // require('./services/scheduler');
 // require('./services/messageService');
@@ -32,7 +34,7 @@ app.use(express.json());
 app.get('/test', (req, res) => {
 	res.send('Hello World!');
 });
-
+app.use('/api/sla', slaParameterRoute);
 app.use('/api/user', userRoute);
 app.use('/api/reservation', reservationRoute);
 app.use('/api/complaint', complaintRoute);	

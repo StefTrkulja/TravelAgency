@@ -13,6 +13,8 @@ const UserService = require('../services/userService');
 const StatusTransitionService = require('../services/statusTransitionService');
 const ComplaintStatusHistoryService = require('../services/complaintStatusHistoryService');
 const SlaTrackingService = require('../services/slaTrackingService');
+const slaParameterService = require('../services/slaParameterService');
+const slaTrackingService = require('../services/slaTrackingService');
 class ComplaintService {
 
 	async findComplaintsByUsername(username) {
@@ -34,8 +36,7 @@ class ComplaintService {
 	async createComplaint(complaintData) {
 		try{
 			const complaint = await Complaint.create(complaintData);
-
-
+			await SlaTrackingService.createSLATracking(complaint.id);
 			return new Result(StatusEnum.OK, 201, complaint);
 		}catch (exception) {
 			const errors = parseSequelizeErrors(exception);
@@ -43,91 +44,96 @@ class ComplaintService {
 		}
 	}
 
-async assignToOperator(complaintId, assigneeUsername) {
-    const tx = await sequelize.transaction();
-    try {
-      // 0) Validacija ulaza
-      if (!complaintId || !assigneeUsername) {
-        await tx.rollback();
-        return new Result(StatusEnum.FAIL, 400, null, [{ message: 'complaintId i assigneeUsername su obavezni' }]);
-      }
-
-      // 1) Učitaj complaint i zaključa ga u istoj transakciji (FOR UPDATE)
-      const complaint = await Complaint.findByPk(complaintId, {
-        transaction: tx,
-        lock: true,                 // ← jednostavno i portabilno; izbegavaj transaction.LOCK.UPDATE
-        skipLocked: false,
-      });
-
-      if (!complaint) {
-        await tx.rollback();
-        return new Result(StatusEnum.FAIL, 404, null, [{ message: 'Complaint not found' }]);
-      }
-
-      // 2) from/to statusi
-      const fromStatusRes = await StatusService.getStatusById(complaint.statusId, { transaction: tx });
-      if (fromStatusRes.status !== StatusEnum.OK) {
-        await tx.rollback();
-        return fromStatusRes;
-      }
-      const fromStatus = fromStatusRes.data; // { id, code, name, ... }
-			const toStatusRes = await StatusService.getStatusByCode('IN_PROGRESS', { transaction: tx });
-      if (toStatusRes.status !== StatusEnum.OK || !toStatusRes.data) {
-        await tx.rollback();
-        return new Result(StatusEnum.FAIL, 404, null, [{ message: 'Target status IN_PROGRESS not found' }]);
-      }
-      const toStatus = toStatusRes.data;
-      // 3) validacija tranzicije — dozvoljeno?
-
-
-			const allowedRes = await StatusTransitionService.isAllowed(fromStatus.id, toStatus.id, { transaction: tx });
-			if (allowedRes.status !== StatusEnum.OK || !allowedRes.data?.allowed) {
-				await tx.rollback();
-				return new Result(StatusEnum.FAIL, 400, null, [{
-					message: `Transition ${fromStatus.code} -> ${toStatus.code} is not allowed`,
-				}]);
-				}	
-				      // 4) update complaint
-      complaint.statusId = toStatus.id;
-      complaint.assigneeUsername = assigneeUsername;
-      await complaint.save({ transaction: tx });
-      // 5) history
-      const changedAt = new Date();
-      const history = await ComplaintStatusHistoryService.createEntry({
-        complaintId,
-        fromStatusId: fromStatus?.id || null,  // prvi prelaz može imati null fromStatusId
-        toStatusId: toStatus.id,
-        changedAt,
-        changedByUsername: assigneeUsername,
-        note: 'Assigned to operator',
-      }, { transaction: tx });
-			
-      // 6) SLA tracking u istoj transakciji (isti timestamp)
-      const slaRes = await SlaTrackingService.onStatusTransition({
-        complaintId,
-        fromCode: fromStatus.code, // npr. 'PENDING'
-        toCode: toStatus.code,     // 'IN_PROGRESS'
-        changedAt,
-      }, { transaction: tx });
-      if (slaRes.status !== StatusEnum.OK) {
-
-        await tx.rollback();
-        return slaRes; // već je Result sa kodom i porukom
-      }
-      await tx.commit();
-      return new Result(StatusEnum.OK, 200, {
-        complaint,
-        history,
-        sla: slaRes.data,
-      });
-
-    } catch (e) {
+async assignToOperator(complaintId, assigneeUsername, priority) {
+  const tx = await sequelize.transaction();
+  try {
+    if (!complaintId || !assigneeUsername || !priority) {
       await tx.rollback();
-      return new Result(StatusEnum.FAIL, 500, null, parseSequelizeErrors(e));
+      return new Result(StatusEnum.FAIL, 400, null, [{ message: 'complaintId, assigneeUsername i priority su obavezni' }]);
     }
-  }
 
-	
+    // 1) Učitaj i zaključa complaint
+    const complaint = await Complaint.findByPk(complaintId, { transaction: tx, lock: true });
+    if (!complaint) {
+      await tx.rollback();
+      return new Result(StatusEnum.FAIL, 404, null, [{ message: 'Complaint not found' }]);
+    }
+
+    // 2) Mora biti iz NEW -> PENDING
+    const fromRes = await StatusService.getStatusById(complaint.statusId, { transaction: tx });
+    if (fromRes.status !== StatusEnum.OK) { await tx.rollback(); return fromRes; }
+    const from = fromRes.data;
+    if (from.code !== 'NEW') {
+      await tx.rollback();
+      return new Result(StatusEnum.FAIL, 409, null, [{ message: `Accept dozvoljen samo iz NEW (trenutno: ${from.code})` }]);
+    }
+
+    const toRes = await StatusService.getStatusByCode('PENDING', { transaction: tx });
+    if (toRes.status !== StatusEnum.OK || !toRes.data) {
+      await tx.rollback();
+      return new Result(StatusEnum.FAIL, 404, null, [{ message: 'Target status PENDING not found' }]);
+    }
+    const to = toRes.data;
+
+    const allowedRes = await StatusTransitionService.isAllowed(from.id, to.id, { transaction: tx });
+    if (allowedRes.status !== StatusEnum.OK || !allowedRes.data?.allowed) {
+      await tx.rollback();
+      return new Result(StatusEnum.FAIL, 400, null, [{ message: `Transition ${from.code} -> ${to.code} is not allowed` }]);
+    }
+
+
+    // 3) Dohvati aktivne SLA parametre za dati priority
+    const slaParamRes = await slaParameterService.getActiveByPriority(priority, { transaction: tx });
+    if (slaParamRes.status !== StatusEnum.OK) {
+      await tx.rollback();
+      return slaParamRes;
+    }
+    const params = slaParamRes.data;
+
+    // 4) Updatuj complaint (zakucaj priority, assign, status)
+    complaint.priority = String(priority).toUpperCase();
+    complaint.assigneeUsername = assigneeUsername;
+    complaint.acceptedAt = complaint.acceptedAt ?? new Date(); // opciono polje
+    complaint.statusId = to.id;
+    await complaint.save({ transaction: tx });
+
+    // 5) History
+    const changedAt = new Date();
+    const history = await ComplaintStatusHistoryService.createEntry({
+      complaintId,
+      fromStatusId: from?.id || null,
+      toStatusId: to.id,
+      changedAt,
+      changedByUsername: assigneeUsername,
+      note: 'Accepted by operator',
+    }, { transaction: tx });
+
+    // 6) SLA snapshot preko servisa
+    const snapshotRes = await slaTrackingService.snapshotOnAccept({
+      complaint,
+      params,
+      changedAt,
+      transaction: tx,
+    });
+    if (snapshotRes.status !== StatusEnum.OK) {
+      await tx.rollback();
+      return snapshotRes;
+    }
+
+    await tx.commit();
+    return new Result(StatusEnum.OK, 200, {
+      complaint,
+      history,
+      sla: snapshotRes.data, // { targetResponseMins, targetResolutionMins, responseDueAt }
+    });
+
+  } catch (e) {
+    await tx.rollback();
+    // pretpostavljam da imaš parseSequelizeErrors; ako ne, samo vrati poruku
+    return new Result(StatusEnum.FAIL, 500, null, [{ message: e.message }]);
+  }
+}
+
 	async findComplaintByIdForUser(complaintId, username) {
 		const complaint = await Complaint.findByPk(complaintId);
 		if (!complaint) {
@@ -169,8 +175,6 @@ async assignToOperator(complaintId, assigneeUsername) {
 				surname: userResult.data.surname,	
 			}
 		}
-
-
 		return new Result(StatusEnum.OK, 200, complaint);
 	}
 
@@ -179,41 +183,129 @@ async assignToOperator(complaintId, assigneeUsername) {
 async transition(complaintId, toCode, actorUsername, note = null) {
   const tx = await sequelize.transaction();
   try {
-    const complaint = await Complaint.findByPk(complaintId, { transaction: tx, lock: tx.LOCK.UPDATE });
-    if (!complaint) { await tx.rollback(); return new Result(StatusEnum.FAIL, 404, null, [{ message:'Complaint not found' }]); }
-    const fromStatusRes = await StatusService.getStatusById(complaint.statusId, { transaction: tx });
-    if (fromStatusRes.status !== StatusEnum.OK) { await tx.rollback(); return fromStatusRes; }
-    const fromStatus = fromStatusRes.data;
-		console.log("To je: ", toCode);	
-    const toStatusRes = await StatusService.getStatusByCode(toCode, { transaction: tx });
+    const complaint = await Complaint.findByPk(complaintId, { transaction: tx, lock: true });
+    if (!complaint) {
+      await tx.rollback();
+      return new Result(StatusEnum.FAIL, 404, null, [{ message: 'Complaint not found' }]);
+    }
 
-		console.log("Trenutni status: ", toStatusRes, ", trazeni status: ", toCode);	
-    if (toStatusRes.status !== StatusEnum.OK) { await tx.rollback(); return toStatusRes; }
-    const toStatus = toStatusRes.data;
-    
+    const toCodeNorm = String(toCode || '').toUpperCase();
 
-    complaint.statusId = toStatus.id;
+    const fromRes = await StatusService.getStatusById(complaint.statusId, { transaction: tx });
+    if (fromRes.status !== StatusEnum.OK) { await tx.rollback(); return fromRes; }
+    const from = fromRes.data;
 
+    const toRes = await StatusService.getStatusByCode(toCodeNorm, { transaction: tx });
+    if (toRes.status !== StatusEnum.OK) { await tx.rollback(); return toRes; }
+    const to = toRes.data;
+
+    if (from.id === to.id) {
+      await tx.rollback();
+      return new Result(StatusEnum.FAIL, 409, null, [{ message: `Already in ${to.code}` }]);
+    }
+
+    const allowedRes = await StatusTransitionService.isAllowed(from.id, to.id, { transaction: tx });
+    if (allowedRes.status !== StatusEnum.OK || !allowedRes.data?.allowed) {
+      await tx.rollback();
+      return new Result(StatusEnum.FAIL, 400, null, [{
+        message: `Transition ${from.code} -> ${to.code} is not allowed`,
+      }]);
+    }
+
+    complaint.statusId = to.id;
     await complaint.save({ transaction: tx });
 
     const changedAt = new Date();
     const histRes = await ComplaintStatusHistoryService.createEntry({
-      complaintId, fromStatusId: fromStatus?.id ?? null, toStatusId: toStatus.id,
-      changedAt, changedByUsername: actorUsername, note
+      complaintId,
+      fromStatusId: from?.id ?? null,
+      toStatusId: to.id,
+      changedAt,
+      changedByUsername: actorUsername,
+      note
     }, { transaction: tx });
     if (histRes.status !== StatusEnum.OK) { await tx.rollback(); return histRes; }
 
-    // SLA
-    // const slaRes = await SlaTrackingService.onStatusTransition({ complaintId, fromCode: fromStatus.code, toCode: toStatus.code, changedAt }, { transaction: tx });
-    // if (slaRes.status !== StatusEnum.OK) { await tx.rollback(); return slaRes; }
+		 console.log('>>> SLA transition hook', { from: from.code, to: to.code });
+    // SLA hook-ovi:
+    if (from.code === 'PENDING' && to.code === 'IN_PROGRESS') {
+      const r = await SlaTrackingService.onStartWork({ complaint, changedAt, transaction: tx });
+      if (r.status !== StatusEnum.OK) { await tx.rollback(); return r; }
+    }
+    if (from.code === 'IN_PROGRESS' && to.code === 'WAITING_INFO') {
+      const r = await SlaTrackingService.onPause({ complaintId, changedAt, transaction: tx });
+      if (r.status !== StatusEnum.OK) { await tx.rollback(); return r; }
+    }
+    if (from.code === 'WAITING_INFO' && to.code === 'IN_PROGRESS') {
+      const r = await SlaTrackingService.onResume({ complaintId, changedAt, transaction: tx });
+      if (r.status !== StatusEnum.OK) { await tx.rollback(); return r; }
+    }
+    if (to.code === 'CLOSED' || to.code === 'REJECTED') {
+      const r = await SlaTrackingService.onClose({ complaintId, changedAt, transaction: tx });
+      if (r.status !== StatusEnum.OK) { await tx.rollback(); return r; }
+    }
 
     await tx.commit();
-    return new Result(StatusEnum.OK, 200, { complaint, history: histRes.data /*, sla: slaRes.data */ });
+    return new Result(StatusEnum.OK, 200, { complaint, history: histRes.data });
   } catch (e) {
     await tx.rollback();
     return new Result(StatusEnum.FAIL, 500, null, parseSequelizeErrors(e));
   }
 }
+
+	async findComplaintByIdForManager(complaintId) {
+
+		const complaint = await Complaint.findByPk(complaintId);
+		if (!complaint) {
+			return new Result(StatusEnum.FAIL, 404, null, [{ message: 'Complaint not found' }]);
+		}
+	
+		const statusResult = await StatusService.getStatusById(complaint.statusId);
+		if (statusResult.status === StatusEnum.OK) {
+			complaint.dataValues.status = statusResult.data;
+		} else {
+			complaint.dataValues.status = null;
+		}
+		const messages = await ComplaintMessageService.findMessagesByComplaintId(complaintId);
+		if (messages.status === StatusEnum.OK) {
+			complaint.dataValues.messages = messages.data;
+		} else {
+			complaint.dataValues.messages = [];
+		}
+		const attachments = await AttachmentService.findByComplaintId(complaintId);
+		if (attachments.status === StatusEnum.OK) {
+			complaint.dataValues.attachments = attachments.data;
+		} else {
+			complaint.dataValues.attachments = [];
+		}	
+		const reservationResult = await ReservationService.findReservationById(complaint.reservationId);
+		if (reservationResult.status === StatusEnum.OK) {
+			complaint.dataValues.reservation = reservationResult.data;
+		} else {
+			complaint.dataValues.reservation = null;
+		}
+		const userResult = await UserService.findByUsername(complaint.createdByUsername);
+		if (userResult.status === StatusEnum.OK) {
+			complaint.dataValues.user = {
+				username: userResult.data.username,
+				name: userResult.data.name,
+				surname: userResult.data.surname,	
+			}
+	}
+		return new Result(StatusEnum.OK, 200, complaint);
+}
+
+	async getAllComplaints() {
+		try {
+			const complaints = await Complaint.findAll();
+			return new Result(StatusEnum.OK, 200, complaints);
+		} catch (error) {
+			console.error('Error fetching complaints:', error);
+			return new Result(StatusEnum.FAIL, 500, null, { message: 'Internal server error' });
+		}
+	};
+
+
 
 	async findComplaintByIdForOperator(complaintId) {
 
@@ -258,7 +350,9 @@ async transition(complaintId, toCode, actorUsername, note = null) {
 }
 
 	async findComplaintById(complaintId) {
+		
 		const complaint = await Complaint.findByPk(complaintId);
+
 		if (!complaint) {
 			return new Result(StatusEnum.FAIL, 404, null, [{ message: 'Complaint not found' }]);
 		}
@@ -305,7 +399,7 @@ async transition(complaintId, toCode, actorUsername, note = null) {
 			where: {
 				[Op.or]: [
 					{ assigneeUsername: operatorUsername },
-					{ statusId: 1 } 
+					{ statusId: 7 }  // NEW
 				]
 			}
 		});

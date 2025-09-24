@@ -47,6 +47,16 @@ class EscalationService {
 		}	
 	}
 
+	async updateEscalation(escalation) {
+		try {
+			await escalation.save();
+			return new Result(StatusEnum.SUCCESS, 200, escalation);
+		} catch (error) {
+			console.error('Error updating escalation:', error);
+			const parsedError = parseSequelizeErrors(error);
+			return new Result(StatusEnum.FAIL, 400, null, parsedError);
+		}
+	}
 
 
 	async getAllEscalations() {
