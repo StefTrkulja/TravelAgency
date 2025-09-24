@@ -14,6 +14,9 @@ import ActivityCustomersView from '../views/ActivityCustomerView.vue';
 import TravelerBookingsView from '../views/TravelerBookingsView.vue';
 import { ro } from 'vuetify/locale';
 
+import MyTicketsView from '@/views/user/MyTicketsView.vue';
+import TicketsView from '../views/Operator/TicketsView.vue';  
+
 
 // Operator
 const OperatorHome = () => import('@/views/OperatorHome.vue')
@@ -47,12 +50,15 @@ const Analytics = () => import('@/views/Analytics.vue')
 const ActivityCalendarView = () => import('@/views/ActivityCalendarView.vue')
 
 
-
 // Define your routes
 const routes = [
   { path: '/', name: 'Home', component: HomeView },
   { path: '/login', name: 'Login', component: LoginView },
   { path: '/signup', name: 'SignUp', component: SignUpView },
+
+  { path: '/my/tickets', name: 'MyTickets', component: MyTicketsView, meta: { requiresAuth: true, role: ['user'] }},
+  { path: '/tickets', name: 'Tickets', component: TicketsView, meta: { requiresAuth: true, role: ['operator'] }},
+
   { path: '/anjaHomeView', name: 'AdminHomePage', component: AdminHomePage },
 
   // Operator
@@ -91,6 +97,7 @@ const routes = [
   { path: '/activities/:activityId/reviews', name: 'ActivityReviews', component: ActivityReviewsView },
   { path: '/activities/:activityId/customers', name: 'ActivityCustomers', component: ActivityCustomersView },
   { path: '/traveler/booking', name: 'TravelerBookings', component: TravelerBookingsView },
+
 ];
 
 

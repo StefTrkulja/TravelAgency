@@ -4,7 +4,6 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class Complaint extends Model {
     static associate(models) {
-      Complaint.belongsTo(models.ComplaintCategory, { foreignKey: 'categoryId', as: 'category' });
       Complaint.belongsTo(models.Status, { foreignKey: 'statusId', as: 'status' });
       Complaint.hasMany(models.Attachment, { foreignKey: 'complaintId', as: 'attachments' });
       Complaint.hasMany(models.ComplaintMessage, { foreignKey: 'complaintId', as: 'messages' });
@@ -19,14 +18,13 @@ module.exports = (sequelize, DataTypes) => {
   }
   Complaint.init({
     id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
-    title: { type: DataTypes.STRING(255), allowNull: false },
+    subject: { type: DataTypes.STRING(255), allowNull: false },
     description: { type: DataTypes.TEXT, allowNull: false },
-    priority: { type: DataTypes.ENUM('LOW','MEDIUM','HIGH','CRITICAL'), allowNull: true }, // prilagodi po tvom enumu
+    priority: { type: DataTypes.ENUM('LOW','MEDIUM','HIGH','CRITICAL'), allowNull: true }, 
     createdAt: { type: DataTypes.DATE, allowNull: true },
-    updatedAt: { type: DataTypes.DATE, allowNull: true },
     lastActivityAt: { type: DataTypes.DATE, allowNull: true },
-    // FK polja:
-    categoryId: { type: DataTypes.BIGINT, allowNull: true },
+    category: { type: DataTypes.STRING(100), allowNull: false },
+        // FK polja:
     statusId: { type: DataTypes.BIGINT, allowNull: true },
     reservationId: { type: DataTypes.BIGINT, allowNull: true },
     createdByUsername: { type: DataTypes.STRING, allowNull: false },
@@ -35,7 +33,7 @@ module.exports = (sequelize, DataTypes) => {
     sequelize,
     modelName: 'Complaint',
     tableName: 'complaints',
-    timestamps: false, // JPA koristi @Creation/@UpdateTimestamp; ako želiš Sequelize timestamps, stavi true + mapiraj createdAt/updatedAt
+    timestamps: false, 
   });
   return Complaint;
 };

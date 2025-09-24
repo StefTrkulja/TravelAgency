@@ -1,3 +1,4 @@
+
 <template>
   <!-- App bar -->
   <v-app-bar density="comfortable" color="primary" dark>

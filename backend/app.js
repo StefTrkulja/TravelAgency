@@ -5,6 +5,12 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const userRoute = require('./routes/userRoute');
+
+const reservationRoute = require('./routes/reservationRoute');
+const complaintRoute = require('./routes/complaintRoute');
+const statusRoute = require('./routes/statusRoute');
+
+=======
 // // const postRoute = require('./routes/postRoute');
 // // const locationRoute = require('./routes/locationRoute');
 // // const imageRoute = require('./routes/imageRoute');
@@ -18,6 +24,7 @@ const arrangementAnjaRoute = require('./routes/arrangementsAnja.routes');
 const reservationRoute = require('./routes/reservation.route');
 const voucherRoute = require('./routes/vouchers.routes');
 const reviewRoute = require('./routes/reviews.routes');
+
 const sequelize = require('./models/index').sequelize;
 const { register } = require('./utils/metrics');
 const path = require('path');
@@ -62,6 +69,11 @@ app.use('/api/activities/analytics', analyticsRoute);
 app.use('/api/activities', activityRecommendationsRoute);
 app.use('/api/calendar', calendarRoute);
 app.use('/api/user', userRoute);
+
+app.use('/api/reservation', reservationRoute);
+app.use('/api/complaint', complaintRoute);	
+app.use('/api/status', statusRoute);
+=======
 app.use('/api/arrangements', require('./routes/arrangements.routes'));
 app.use('/api/offers', require('./routes/offers.routes'));
 app.use('/api/approvals', require('./routes/approvals.routes'));
