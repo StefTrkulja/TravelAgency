@@ -255,8 +255,16 @@ export default {
     },
 
     viewDetails(item) {
-      this.$router.push({ name: 'ticket-details', params: { id: item.id } });
-    },
+  const statusCode = this.getStatusCode(item);
+  
+  // Ako je status "NEW", idi na Manager/NewTicketDetails
+  if (statusCode === 'NEW') {
+    this.$router.push(`/operator/triage/${item.id}`);
+  } else {
+    // Za sve ostale statuse (PENDING, IN_PROGRESS, itd.), idi na standardni operator view
+    this.$router.push({ name: 'OperatorTicketDetails', params: { id: item.id } });
+  }
+},
     formatDate(d) {
       if (!d) return '—';
       try { return new Date(d).toLocaleString(); } catch { return String(d); }

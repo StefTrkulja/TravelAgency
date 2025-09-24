@@ -17,6 +17,14 @@ import { ro } from 'vuetify/locale';
 import MyTicketsView from '@/views/user/MyTicketsView.vue';
 import TicketsView from '../views/Operator/TicketsView.vue';  
 
+import TicketDetailsView from '@/views/user/TicketDetailsView.vue';
+import OperatorTicketDetails from '@/views/operator/OperatorTicketDetails.vue';
+import ManagerTicketsView from '@/views/Manager/ManagerTicketsView.vue';
+import ManagerTicketDetails from '../views/Manager/ManagerTicketDetails.vue';
+import EscalationsView from '@/views/Manager/EscalationsView.vue';
+import CompensationsView from '@/views/Manager/CompensationsView.vue';
+
+
 
 // Operator
 const OperatorHome = () => import('@/views/OperatorHome.vue')
@@ -50,6 +58,7 @@ const Analytics = () => import('@/views/Analytics.vue')
 const ActivityCalendarView = () => import('@/views/ActivityCalendarView.vue')
 
 
+
 // Define your routes
 const routes = [
   { path: '/', name: 'Home', component: HomeView },
@@ -58,6 +67,14 @@ const routes = [
 
   { path: '/my/tickets', name: 'MyTickets', component: MyTicketsView, meta: { requiresAuth: true, role: ['user'] }},
   { path: '/tickets', name: 'Tickets', component: TicketsView, meta: { requiresAuth: true, role: ['operator'] }},
+  { path: '/tickets/:id', name: 'OperatorTicketDetails', component: OperatorTicketDetails, meta: { requiresAuth: true, role: ['operator'] }},
+  { path: '/my/tickets/:id', name: 'TicketDetails', component: TicketDetailsView, meta: { requiresAuth: true, role: ['user'] }},
+  { path: '/operator-tickets', name: 'ManagerTicketsView', component: ManagerTicketsView, meta: { requiresAuth: true, role: ['manager'] }},
+  { path: '/manager/tickets/:id', name: 'ManagerTicketDetails', component: ManagerTicketDetails, meta: { requiresAuth: true, role: ['manager'] }},
+  { path: '/escalations', name: 'EscalationsView', component: EscalationsView, meta: { requiresAuth: true, role: ['manager'] }},
+  { path: '/compensations', name: 'CompensationsView', component: CompensationsView, meta: { requiresAuth: true, role: ['manager'] }},
+  { path: '/operator/triage/:id', name: 'ComplaintTriage', component: () => import('@/views/Operator/ComplaintTriage.vue') }
+
 
   { path: '/anjaHomeView', name: 'AdminHomePage', component: AdminHomePage },
 

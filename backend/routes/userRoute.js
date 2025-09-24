@@ -59,6 +59,22 @@ router.post('/logout',
 		return res.status(200).json({ message: 'Logout successful!' });
 	});
 
+
+router.get('/operators',jwtParser.extractTokenUser, async (req, res) => {
+		if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
+		if (req.user.role !== 'manager') {
+			return res.status(403).json({ message: 'Forbidden' });
+		}
+
+		const result = await UserService.findOperators();
+		if (result.status === StatusEnum.FAIL) {
+			return res.status(result.code).json({ errors: result.errors });
+		}
+
+		return res.status(result.code).json(result.data);
+	}
+);
+
 router.get('/activate/:token',
 	async (req, res) => {
 		let result;

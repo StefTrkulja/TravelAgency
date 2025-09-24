@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const {Attachment} = require('../models');
 const sequelize = require('../models/index').sequelize;
-
+const { StatusEnum, Result} = require('../utils/result');
 
 class AttachmentService {
   constructor() {
@@ -60,4 +60,14 @@ class AttachmentService {
     await att.destroy();
     return true;
   }
-}module.exports = new AttachmentService();
+
+
+  async findByComplaintId(complaintId) {
+    const attachments = await Attachment.findAll({ where: { complaintId } });
+
+    return new Result(StatusEnum.OK, 200, attachments);
+  }
+
+}
+
+module.exports = new AttachmentService();

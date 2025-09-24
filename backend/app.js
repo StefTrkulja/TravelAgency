@@ -10,7 +10,10 @@ const reservationRoute = require('./routes/reservationRoute');
 const complaintRoute = require('./routes/complaintRoute');
 const statusRoute = require('./routes/statusRoute');
 
-=======
+const escalationRoute = require('./routes/escalationRoute');
+const compensationRoute = require('./routes/compensationRoute');	
+const slaParameterRoute = require('./routes/slaParameterRoute');
+
 // // const postRoute = require('./routes/postRoute');
 // // const locationRoute = require('./routes/locationRoute');
 // // const imageRoute = require('./routes/imageRoute');
@@ -28,8 +31,6 @@ const reviewRoute = require('./routes/reviews.routes');
 const sequelize = require('./models/index').sequelize;
 const { register } = require('./utils/metrics');
 const path = require('path');
-
-
 
 // require('./services/scheduler');
 // require('./services/messageService');
@@ -58,6 +59,9 @@ app.get('/test', (req, res) => {
 	res.send('Hello World!');
 });
 
+app.use('/api/sla', slaParameterRoute);
+
+
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/activities', activityRoute);
@@ -68,12 +72,16 @@ app.use('/api/activities/reviews', activityReviewRoute);
 app.use('/api/activities/analytics', analyticsRoute);
 app.use('/api/activities', activityRecommendationsRoute);
 app.use('/api/calendar', calendarRoute);
+
 app.use('/api/user', userRoute);
 
 app.use('/api/reservation', reservationRoute);
 app.use('/api/complaint', complaintRoute);	
 app.use('/api/status', statusRoute);
-=======
+
+app.use('/api/escalation', escalationRoute);
+app.use('/api/compensation', compensationRoute);
+
 app.use('/api/arrangements', require('./routes/arrangements.routes'));
 app.use('/api/offers', require('./routes/offers.routes'));
 app.use('/api/approvals', require('./routes/approvals.routes'));
@@ -89,11 +97,17 @@ app.use('/api/reviews',reviewRoute);
 app.use('/api/bookings', bookingRoute);
 
 //app.use('/api/arrangement', require('./routes/arrangements.routes'));
+
 // app.use('/api/post', postRoute);
 // app.use('/api/location', locationRoute);
 // app.use('/api/image', imageRoute);
 // app.use('/api/stats', statsRoute);
 // app.use('/api/group', groupRoute);
+
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+
 
 sequelize.authenticate().then(() => {
 	console.log(`Connection to the ${process.env.DB_NAME} database has been established successfully!`);

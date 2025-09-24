@@ -51,7 +51,16 @@ module.exports = {
         orderIndex: 6,
         parentId: null,
       },
-    ]);
+      // ➕ NEW status (id = 7)
+      {
+        id: 7,
+        code: 'NEW',
+        name: 'New',
+        description: 'Ticket submitted; pending triage. Priority not finalized.',
+        orderIndex: 0,
+        parentId: null,
+      },
+    ], {});
   },
 
   async down(queryInterface, Sequelize) {

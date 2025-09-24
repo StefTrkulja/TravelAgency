@@ -7,7 +7,6 @@ const router = express.Router();
 router.get('/',
 	jwtParser.extractTokenUser,
 	async (req, res) => {
-		console.log("req.user", req.user);
 		if (!req.user) {
 			return res.status(401).json({ message: 'Unauthorized' });
 		}

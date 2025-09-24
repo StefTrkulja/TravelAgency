@@ -67,19 +67,30 @@
           <!-- STEP 1 -->
           <div v-if="step === 1">
             <v-form ref="step1Form">
-              <v-row>
-                <v-col cols="8">
-                  <v-text-field
-                    v-model="form.subject"
-                    label="Subject"
-                    outlined
-                    :rules="[rules.required, rules.max255]"
-                  />
-                </v-col>
-                <v-col cols="4" class="d-flex align-end">
-                  <v-btn color="primary" @click="nextStep" :loading="validatingStep1">Next</v-btn>
-                </v-col>
-              </v-row>
+          <v-row class="subject-row" align="stretch">
+  <v-col cols="8">
+    <v-text-field
+      v-model="form.subject"
+      label="Subject"
+      outlined
+      :rules="[rules.required, rules.max255]"
+      class="subject-field"
+    />
+  </v-col>
+
+  <v-col cols="4" class="d-flex">
+    <v-btn
+      color="primary"
+      class="next-btn"
+      size="large"
+      
+      @click="nextStep"
+      :loading="validatingStep1"
+    >
+      Next
+    </v-btn>
+  </v-col>
+</v-row>
 
               <v-autocomplete
                 v-model="form.reservationId"
@@ -393,7 +404,7 @@ export default {
       return String(s).trim().toLowerCase() === 'closed';
     },
     viewDetails(t) {
-      this.$router.push({ name: 'ticket-details', params: { id: t.id } });
+      this.$router.push({ name: 'TicketDetails', params: { id: t.id } });
     },
     rate(t) {
       console.log('Rate ticket', t.id);
@@ -408,6 +419,17 @@ export default {
 </script>
 
 <style scoped>
+/* poravnavanje visine i veće dugme */
+.subject-row { align-items: stretch; }
+.subject-field :deep(.v-field) { height: 56px; } /* standardna visina inputa */
+.next-btn {
+  height: 56px;         /* ostaje kao što je */
+  min-width: 120px;     /* dovoljno za tekst "Next" */
+  width: auto;          /* neka se prilagodi sadržaju */
+  font-weight: 700;
+  margin-left: auto;    /* gurne dugme desno u koloni */
+}
+
 /* Header */
 .tickets-header {
   display: flex;
