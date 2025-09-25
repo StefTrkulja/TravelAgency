@@ -15,7 +15,6 @@ function canEditArrangement(arrangement, user) {
   return true;
 }
 
-/** Učitaj polazak + aranžman (bez obzira na alias) */
 async function loadDepartureWithArrangement(departureId, tx) {
   let dep = await Departure.findByPk(departureId, {
     include: [{ model: TravelArrangement, as: 'arrangement' }],

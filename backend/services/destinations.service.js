@@ -1,145 +1,122 @@
-const { Destination, Country, User } = require('../models');
+// backend/services/destinations.service.js
+'use strict';
 
-class DestinationService {
-  async getAllDestinations(filters = {}) {
-    try {
-      const whereClause = {};
-      
-      if (filters.countryId) {
-        whereClause.countryId = filters.countryId;
-      }
-      
-      if (filters.isActive !== undefined) {
-        whereClause.isActive = filters.isActive;
-      }
+const { Destination, Country, TravelArrangement, sequelize } = require('../models');
+const { Op } = require('sequelize');
 
-      const destinations = await Destination.findAll({
-        where: whereClause,
-        include: [
-          {
-            association: 'country',
-            attributes: ['id', 'name']
-          },
-        ],
-        order: [['name', 'ASC']]
-      });
-      
-      return { success: true, data: destinations };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+
+function pickAllowedPayload(payload, allowedKeys) {
+  const out = {};
+  for (const k of allowedKeys) {
+    if (payload[k] !== undefined) out[k] = payload[k];
   }
-
-  async getDestinationById(id) {
-    try {
-      const destination = await Destination.findByPk(id, {
-        include: [
-          {
-            association: 'country',
-            attributes: ['id', 'name']
-          },
-          {
-            association: 'arrangements',
-            where: { status: ['ACTIVE', 'PENDING'] },
-            required: false
-          }
-        ]
-      });
-      
-      if (!destination) {
-        return { success: false, error: 'Destination not found' };
-      }
-      
-      return { success: true, data: destination };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
-
-  async createDestination(destinationData) {
-    try {
-      const destination = await Destination.create(destinationData);
-      
-      const createdDestination = await Destination.findByPk(destination.id, {
-        include: [
-          {
-            association: 'country',
-            attributes: ['id', 'name']
-          },
-        ]
-      });
-      
-      return { success: true, data: createdDestination };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
-
-  // Update destination
-  async updateDestination(id, updateData) {
-    try {
-      const [updatedRowsCount] = await Destination.update(updateData, {
-        where: { id }
-      });
-      
-      if (updatedRowsCount === 0) {
-        return { success: false, error: 'Destination not found' };
-      }
-      
-      const updatedDestination = await Destination.findByPk(id, {
-        include: [
-          {
-            association: 'country',
-            attributes: ['id', 'name']
-          },
-        ]
-      });
-      
-      return { success: true, data: updatedDestination };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
-
-  // Delete destination
-  async deleteDestination(id) {
-    try {
-      const deletedRowsCount = await Destination.destroy({
-        where: { id }
-      });
-      
-      if (deletedRowsCount === 0) {
-        return { success: false, error: 'Destination not found' };
-      }
-      
-      return { success: true, message: 'Destination deleted successfully' };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
-
-  // Get destinations by country
-  async getDestinationsByCountry(countryId) {
-    try {
-      const destinations = await Destination.findAll({
-        where: { 
-          countryId,
-          isActive: true 
-        },
-        include: [
-          {
-            association: 'country',
-            attributes: ['id', 'name']
-          }
-        ],
-        order: [['name', 'ASC']]
-      });
-      
-      return { success: true, data: destinations };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
+  return out;
 }
 
-module.exports = new DestinationService();
+async function resolveCountryIdIfNeeded(payload) {
+  if (!Destination.rawAttributes.countryId) return null;
+
+  if (payload.countryId) return payload.countryId;
+
+  if (payload.country && Country) {
+    const [row] = await Country.findOrCreate({
+      where: { name: payload.country },
+      defaults: { name: payload.country }
+    });
+    return row.id;
+  }
+
+  return null;
+}
+
+
+async function create(payload) {
+  const attrs = Destination.rawAttributes;
+
+  if (!payload.name) throw new Error('name is required');
+
+  const data = pickAllowedPayload(payload, Object.keys(attrs));
+
+  // Country veza (ako postoji countryId)
+  const countryId = await resolveCountryIdIfNeeded(payload);
+  if (countryId && attrs.countryId) data.countryId = countryId;
+
+  // Ako postoji createdByUsername i nije prosleđen, probaj iz payload-a (ili odbij)
+  if (attrs.createdByUsername && !data.createdByUsername) {
+    // ako je kolona obavezna (allowNull === false), bolje jasno poruči
+    const required = attrs.createdByUsername.allowNull === false;
+    if (required) throw new Error('createdByUsername is required by Destination model');
+  }
+
+  const dest = await Destination.create(data);
+  return dest;
+}
+
+
+async function list(query = {}) {
+  const where = {};
+  if (query.q && Destination.rawAttributes.name) {
+    where.name = { [Op.iLike]: `%${query.q}%` };
+  }
+  if (query.countryId && Destination.rawAttributes.countryId) {
+    where.countryId = query.countryId;
+  }
+
+  const include = [];
+  if (Country && Destination.associations?.country) {
+    include.push({ model: Country, as: 'country' });
+  }
+
+  const rows = await Destination.findAll({
+    where,
+    include,
+    order: [['name', 'ASC']]
+  });
+  return rows;
+}
+
+
+async function update(id, payload) {
+  return await sequelize.transaction(async (tx) => {
+    const dest = await Destination.findByPk(id, { transaction: tx });
+    if (!dest) throw new Error('Destination not found');
+
+    const attrs = Destination.rawAttributes;
+    const data = pickAllowedPayload(payload, Object.keys(attrs));
+
+    if (attrs.countryId) {
+      if (!data.countryId && payload.country) {
+        const [row] = await Country.findOrCreate({
+          where: { name: payload.country },
+          defaults: { name: payload.country },
+          transaction: tx
+        });
+        data.countryId = row.id;
+      }
+    }
+
+    Object.assign(dest, data);
+    await dest.save({ transaction: tx });
+    return dest;
+  });
+}
+
+/**
+ * DELETE
+ */
+async function remove(id) {
+  return await sequelize.transaction(async (tx) => {
+    // Opcionalno: zabrani brisanje ako postoje aranžmani
+    if (TravelArrangement && TravelArrangement.rawAttributes.destinationId) {
+      const count = await TravelArrangement.count({ where: { destinationId: id }, transaction: tx });
+      if (count > 0) {
+        throw new Error('Cannot delete: destination is used by one or more travel arrangements');
+      }
+    }
+    const rows = await Destination.destroy({ where: { id }, transaction: tx });
+    if (!rows) throw new Error('Destination not found');
+    return { deleted: id };
+  });
+}
+
+module.exports = { create, list, update, remove };

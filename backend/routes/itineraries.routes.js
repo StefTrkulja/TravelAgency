@@ -6,10 +6,7 @@ const svc = require('../services/itineraries.service');
 const { StatusEnum } = require('../utils/result');
 const { verifyToken } = require('../utils/jwtParser');
 
-/**
- * Kreiraj itinerary za polazak
- * Dozvoljeno: OPERATOR (vlasnik aranžmana) ili ADMIN
- */
+
 router.post('/:departureId',
   verifyToken('OPERATOR', 'ADMIN'),
   async (req, res) => {
@@ -19,10 +16,7 @@ router.post('/:departureId',
   }
 );
 
-/**
- * Lista itinerarya po polasku (read)
- * Dozvoljeno: svi autentifikovani (po potrebi suzi)
- */
+
 router.get('/by-departure/:departureId',
   verifyToken('OPERATOR', 'SUPPLIER', 'MANAGER', 'ADMIN'),
   async (req, res) => {
@@ -31,10 +25,7 @@ router.get('/by-departure/:departureId',
   }
 );
 
-/**
- * Dohvati jedan itinerary (read)
- * Dozvoljeno: svi autentifikovani (po potrebi suzi)
- */
+
 router.get('/:id',
   verifyToken('OPERATOR', 'SUPPLIER', 'MANAGER', 'ADMIN'),
   async (req, res) => {
@@ -43,10 +34,7 @@ router.get('/:id',
   }
 );
 
-/**
- * Izmeni itinerary
- * Dozvoljeno: OPERATOR (vlasnik aranžmana) ili ADMIN
- */
+
 router.put('/:id',
   verifyToken('OPERATOR', 'ADMIN'),
   async (req, res) => {
@@ -55,10 +43,6 @@ router.put('/:id',
   }
 );
 
-/**
- * Obriši itinerary
- * Dozvoljeno: OPERATOR (vlasnik aranžmana) ili ADMIN
- */
 router.delete('/:id',
   verifyToken('OPERATOR', 'ADMIN'),
   async (req, res) => {

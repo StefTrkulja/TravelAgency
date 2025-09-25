@@ -12,7 +12,7 @@ const {
   SupplierOffer
 } = require('../models');
 
-// ------------------ CRUD preko servisa (ostavljam kako je bilo)
+// ------------------ CRUD preko servisa 
 router.post('/', verifyToken('OPERATOR', 'ADMIN'), async (req, res) => {
   try {
     const a = await svc.createArrangement(req.user, req.body);
@@ -56,7 +56,7 @@ router.get('/:id', verifyToken('OPERATOR', 'SUPPLIER', 'MANAGER', 'ADMIN'), asyn
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// ------------------ Select / Unselect (ostavljam tvoj unselect preko servisa)
+// ------------------ Select / Unselect 
 router.post('/:id/select-offer', verifyToken('OPERATOR', 'ADMIN','MANAGER'), async (req, res) => {
   try {
     const arrangementId = Number(req.params.id);
@@ -66,10 +66,9 @@ router.post('/:id/select-offer', verifyToken('OPERATOR', 'ADMIN','MANAGER'), asy
     const a = await TravelArrangement.findByPk(arrangementId);
     if (!a) throw new Error('Arrangement not found');
 
-    // upsert izbor
     await OfferSelection.upsert({ arrangementId, category, offerId });
 
-    // ako su sve obavezne kategorije pokrivene -> READY
+    // ako su sve obavezne kategorije pokrivene -READY
     const required = a.type === 'DAY_TRIP'
       ? ['TRANSPORT', 'TOUR']
       : ['TRANSPORT', 'ACCOMMODATION', 'TOUR'];
@@ -93,7 +92,7 @@ router.post('/:id/unselect-offer', verifyToken('OPERATOR', 'ADMIN','MANAGER'), a
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// Batch attach (ostavljam preko servisa)
+// Batch attach 
 router.post('/:arrangementId/attach-offers', verifyToken('OPERATOR','ADMIN'), async (req,res)=>{
   try {
     const out = await svc.attachOffersToNewArrangement(
