@@ -202,8 +202,23 @@
     </div>
 
     <div class="d-flex ga-2">
-      <v-btn size="small" variant="outlined" color="error" @click="openCancelDialog(b)">Cancel</v-btn>
-      <v-btn size="small" variant="outlined" @click="editBooking(b)">Edit</v-btn>
+      <v-btn 
+        v-if="new Date(b.activitySchedule?.endTime) >= new Date()"
+        size="small" 
+        variant="outlined" 
+        color="error" 
+        @click="openCancelDialog(b)"
+      >
+        Cancel
+      </v-btn>
+      <v-btn 
+        v-if="new Date(b.activitySchedule?.endTime) >= new Date()"
+        size="small" 
+        variant="outlined" 
+        @click="editBooking(b)"
+      >
+        Edit
+      </v-btn>
       <v-btn
         v-if="new Date(b.activitySchedule?.endTime) < new Date() && !b.review"
         size="small"
@@ -594,15 +609,18 @@ async function fetchRecommendations() {
           const res = await axios.get(`/activities/schedules/activity/${activity.id}`);
           const scheduleItems = [];
           for (const s of res.data) {
-            const bookingsRes = await axios.get(`/activities/bookings/schedule/${s.id}`);
-            const totalBooked = bookingsRes.data.reduce((sum, b) => sum + b.numberOfParticipants, 0);
-            const remaining = activity.maxCapacity - totalBooked;
+            // Only include schedules within the arrangement period
+            if (isScheduleWithinArrangementPeriod(s)) {
+              const bookingsRes = await axios.get(`/activities/bookings/schedule/${s.id}`);
+              const totalBooked = bookingsRes.data.reduce((sum, b) => sum + b.numberOfParticipants, 0);
+              const remaining = activity.maxCapacity - totalBooked;
 
-            scheduleItems.push({
-              id: s.id,
-              label: `${formatDate(s.startTime)} → ${formatDate(s.endTime)}`,
-              remaining
-            });
+              scheduleItems.push({
+                id: s.id,
+                label: `${formatDate(s.startTime)} → ${formatDate(s.endTime)}`,
+                remaining
+              });
+            }
           }
           schedules[activity.id] = scheduleItems;
         }
@@ -657,15 +675,18 @@ async function fetchActivities() {
         // for each schedule, load bookings to calculate remaining spots
         const scheduleItems = [];
         for (const s of res.data) {
-          const bookingsRes = await axios.get(`/activities/bookings/schedule/${s.id}`);
-          const totalBooked = bookingsRes.data.reduce((sum, b) => sum + b.numberOfParticipants, 0);
-          const remaining = a.maxCapacity - totalBooked;
+          // Only include schedules within the arrangement period
+          if (isScheduleWithinArrangementPeriod(s)) {
+            const bookingsRes = await axios.get(`/activities/bookings/schedule/${s.id}`);
+            const totalBooked = bookingsRes.data.reduce((sum, b) => sum + b.numberOfParticipants, 0);
+            const remaining = a.maxCapacity - totalBooked;
 
-          scheduleItems.push({
-            id: s.id,
-            label: `${formatDate(s.startTime)} → ${formatDate(s.endTime)}`,
-            remaining
-          });
+            scheduleItems.push({
+              id: s.id,
+              label: `${formatDate(s.startTime)} → ${formatDate(s.endTime)}`,
+              remaining
+            });
+          }
         }
 
         schedules[a.id] = scheduleItems;
@@ -685,7 +706,7 @@ async function fetchBookings() {
     }
     
     const { data } = await axios.get(`/activities/bookings/user/${store.username}`);
-    const mine = data.filter(b => b.arrangement_booking_id === arrangement.value.id);
+    const mine = data.filter(b => b.arrangement_booking_id === booking.value.id);
 
     // attach my review (if any) to each booking
     const withReviews = await Promise.all(
