@@ -1,14 +1,63 @@
 <template>
-  <v-container class="py-8">
-    <h2 class="text-h5 mb-6">Activities for arrangement #{{ arrangementName }}</h2>
+  <v-container class="py-8" fluid>
+    <!-- Header Section -->
+    <div class="d-flex align-center justify-space-between mb-8">
+      <div>
+        <h1 class="text-h4 font-weight-bold text-primary mb-2">
+          <v-icon class="mr-2" size="32">mdi-map-marker-star</v-icon>
+          Activities Management
+        </h1>
+        <h2 class="text-h6 text-grey-darken-1">{{ arrangementName }}</h2>
+      </div>
+      
+      <div v-if="store.role === 'operator'" class="d-flex align-center ga-3">
+        <v-chip 
+          color="primary" 
+          variant="tonal" 
+          prepend-icon="mdi-counter"
+        >
+          {{ activities.length }} Activities
+        </v-chip>
+        <v-btn 
+          color="primary" 
+          variant="elevated"
+          prepend-icon="mdi-plus"
+          @click="openCreateDialog"
+          size="large"
+        >
+          Create Activity
+        </v-btn>
+      </div>
+      
+      <div v-else-if="store.role === 'manager'" class="text-center">
+        <v-chip 
+          color="success" 
+          variant="tonal" 
+          prepend-icon="mdi-chart-line"
+          class="mb-2"
+        >
+          Manager Dashboard
+        </v-chip>
+        <div class="text-caption">{{ activities.length }} activities to manage</div>
+      </div>
+    </div>
 
-        <div v-if="store.role === 'operator'" class="d-flex justify-end mb-4">
-        <v-btn color="primary" @click="openCreateDialog">Create Activity</v-btn>
-        </div>
-
-
-    <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
-    <v-progress-linear v-if="loading" indeterminate class="mb-4" />
+    <!-- Status Messages -->
+    <v-alert v-if="error" type="error" variant="tonal" class="mb-6" prominent>
+      <template v-slot:prepend>
+        <v-icon>mdi-alert-circle</v-icon>
+      </template>
+      {{ error }}
+    </v-alert>
+    
+    <v-progress-linear 
+      v-if="loading" 
+      indeterminate 
+      class="mb-6" 
+      color="primary"
+      height="6"
+      rounded
+    />
 
 
     <v-dialog v-model="showValueDialog" max-width="500">
@@ -45,61 +94,231 @@
   </v-card>
 </v-dialog>
 
-    <!-- Activity Cards -->
-<v-card
-  v-for="a in activities"
-  :key="a.id"
-  class="mb-4"
-  variant="outlined"
->
-  <v-card-text>
-    <v-row no-gutters align="center">
-      <!-- Image -->
-      <v-col cols="12" md="3" class="d-flex justify-center">
-        <v-img
-          v-if="a.imagePath"
-          :src="`http://localhost:3000/${a.imagePath}`"
-          alt="Activity image"
-          max-width="220"
-          aspect-ratio="4/3"
-          class="rounded"
-          cover
-        />
-      </v-col>
+    <!-- Activities Grid -->
+    <v-row>
+      <v-col
+        v-for="a in activities"
+        :key="a.id"
+        cols="12"
+        lg="6"
+        xl="4"
+      >
+        <v-card
+          class="activity-card h-100"
+          variant="elevated"
+          elevation="3"
+          hover
+        >
+          <!-- Image Header -->
+          <div class="position-relative">
+            <v-img
+              v-if="a.imagePath"
+              :src="`http://localhost:3000/${a.imagePath}`"
+              alt="Activity image"
+              height="220"
+              cover
+              class="activity-image"
+            >
+              <template v-slot:placeholder>
+                <div class="d-flex align-center justify-center fill-height">
+                  <v-progress-circular indeterminate color="primary" />
+                </div>
+              </template>
+            </v-img>
+            <div
+              v-else
+              class="d-flex align-center justify-center activity-placeholder"
+              style="height: 220px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);"
+            >
+              <v-icon size="64" color="grey-lighten-1">mdi-image-outline</v-icon>
+            </div>
 
-      <!-- Info -->
-      <v-col cols="12" md="6" class="px-4">
-        <div class="text-subtitle-1 font-weight-bold">{{ a.name }}</div>
-        <div class="text-body-2 mb-2">{{ a.description }}</div>
-        <div class="text-body-2">
-          <strong>Price:</strong> {{ a.price }} |
-          <strong>Status:</strong> {{ a.status }} |
-          <strong>Max:</strong> {{ a.maxCapacity }}
-        </div>
-      </v-col>
+            <!-- Status Badge -->
+            <v-chip
+              :color="a.status === 'ACTIVE' ? 'success' : 'warning'"
+              variant="flat"
+              size="small"
+              class="position-absolute"
+              style="top: 12px; right: 12px;"
+            >
+              {{ a.status }}
+            </v-chip>
 
-      <!-- Actions -->
-      <v-col cols="12" md="3" class="d-flex justify-end">
-        <div v-if="store.role === 'operator'" class="d-flex ga-2">
-          <v-btn icon="mdi-pencil" variant="tonal" @click="openEditDialog(a)" />
-          <v-btn icon="mdi-delete" variant="tonal" color="error" @click="confirmDelete(a)" />
-          <v-btn variant="flat" @click="goToSchedules(a.id)">Add Schedule</v-btn>
-        </div>
+            <!-- Price Badge -->
+            <v-chip
+              color="primary"
+              variant="flat"
+              class="position-absolute font-weight-bold"
+              style="bottom: 12px; left: 12px;"
+            >
+              ${{ a.price }}
+            </v-chip>
+          </div>
 
-        <div v-else-if="store.role === 'manager'" class="d-flex flex-column ga-2">
-          <v-btn variant="flat" @click="openAnalyticsDialog(a.id)">Analytics</v-btn>
-          <v-btn small color="primary" @click="openValueDialog(a)">
-  Adjust Weight
-</v-btn>
+          <!-- Content -->
+          <v-card-text class="pb-2">
+            <div class="text-h6 font-weight-bold mb-2 text-primary">{{ a.name }}</div>
+            <p class="text-body-2 text-grey-darken-1 mb-3" style="line-height: 1.4;">
+              {{ a.description }}
+            </p>
 
+            <!-- Activity Details -->
+            <div class="mb-4">
+              <v-row dense>
+                <v-col cols="6">
+                  <div class="d-flex align-center mb-1">
+                    <v-icon size="16" class="mr-1" color="grey-darken-1">mdi-account-group</v-icon>
+                    <span class="text-caption">Max: {{ a.maxCapacity }}</span>
+                  </div>
+                </v-col>
+                <v-col cols="6">
+                  <div class="d-flex align-center mb-1">
+                    <v-icon size="16" class="mr-1" color="grey-darken-1">mdi-clock-outline</v-icon>
+                    <span class="text-caption">{{ a.lengthInMin || 60 }}min</span>
+                  </div>
+                </v-col>
+                <v-col cols="6" v-if="a.difficulty">
+                  <div class="d-flex align-center">
+                    <v-icon size="16" class="mr-1" color="grey-darken-1">mdi-speedometer</v-icon>
+                    <span class="text-caption">Level {{ a.difficulty }}/5</span>
+                  </div>
+                </v-col>
+                <v-col cols="6" v-if="store.role === 'manager' && a.value">
+                  <div class="d-flex align-center">
+                    <v-icon size="16" class="mr-1" color="orange">mdi-star</v-icon>
+                    <span class="text-caption">Weight {{ a.value }}/10</span>
+                  </div>
+                </v-col>
+              </v-row>
+            </div>
 
-          <v-btn variant="flat" @click="goToReviews(a.id)">See Reviews</v-btn>
-          <v-btn variant="flat" @click="goToCustomers(a.id)">Customers</v-btn>
-        </div>
+            <!-- Feature Tags -->
+            <div class="d-flex flex-wrap ga-1 mb-4">
+              <v-chip
+                v-if="a.isPetFriendly"
+                size="x-small"
+                color="green"
+                variant="tonal"
+              >
+                <v-icon size="12" start>mdi-dog</v-icon>
+                Pet Friendly
+              </v-chip>
+              <v-chip
+                v-if="a.isFamilyFriendly"
+                size="x-small"
+                color="blue"
+                variant="tonal"
+              >
+                <v-icon size="12" start>mdi-account-child</v-icon>
+                Family
+              </v-chip>
+              <v-chip
+                v-if="a.isOutdoor"
+                size="x-small"
+                color="teal"
+                variant="tonal"
+              >
+                <v-icon size="12" start>mdi-tree</v-icon>
+                Outdoor
+              </v-chip>
+              <v-chip
+                v-if="a.isAdventure"
+                size="x-small"
+                color="orange"
+                variant="tonal"
+              >
+                <v-icon size="12" start>mdi-hiking</v-icon>
+                Adventure
+              </v-chip>
+              <v-chip
+                v-if="a.isPremiumOption"
+                size="x-small"
+                color="purple"
+                variant="tonal"
+              >
+                <v-icon size="12" start>mdi-crown</v-icon>
+                Premium
+              </v-chip>
+            </div>
+          </v-card-text>
+
+          <!-- Actions -->
+          <v-card-actions class="pt-0">
+            <div v-if="store.role === 'operator'" class="d-flex w-100 ga-1">
+              <v-btn
+                variant="outlined"
+                size="small"
+                icon="mdi-pencil"
+                @click="openEditDialog(a)"
+                class="flex-shrink-0"
+              />
+              <v-btn
+                variant="outlined"
+                size="small"
+                color="error"
+                icon="mdi-delete"
+                @click="confirmDelete(a)"
+                class="flex-shrink-0"
+              />
+              <v-btn
+                variant="flat"
+                color="primary"
+                @click="goToSchedules(a.id)"
+                class="flex-grow-1"
+                prepend-icon="mdi-calendar-plus"
+              >
+                Schedules
+              </v-btn>
+            </div>
+
+            <div v-else-if="store.role === 'manager'" class="d-flex flex-column w-100 ga-2">
+              <div class="d-flex ga-1">
+                <v-btn
+                  variant="flat"
+                  color="info"
+                  @click="openAnalyticsDialog(a.id)"
+                  class="flex-grow-1"
+                  prepend-icon="mdi-chart-line"
+                  size="small"
+                >
+                  Analytics
+                </v-btn>
+                <v-btn
+                  variant="outlined"
+                  color="primary"
+                  @click="openValueDialog(a)"
+                  class="flex-grow-1"
+                  prepend-icon="mdi-tune"
+                  size="small"
+                >
+                  Weight
+                </v-btn>
+              </div>
+              <div class="d-flex ga-1">
+                <v-btn
+                  variant="outlined"
+                  @click="goToReviews(a.id)"
+                  class="flex-grow-1"
+                  prepend-icon="mdi-star"
+                  size="small"
+                >
+                  Reviews
+                </v-btn>
+                <v-btn
+                  variant="outlined"
+                  @click="goToCustomers(a.id)"
+                  class="flex-grow-1"
+                  prepend-icon="mdi-account-group"
+                  size="small"
+                >
+                  Customers
+                </v-btn>
+              </div>
+            </div>
+          </v-card-actions>
+        </v-card>
       </v-col>
     </v-row>
-  </v-card-text>
-</v-card>
 
 
     <!-- Analytics Dialog -->
@@ -399,3 +618,124 @@ async function confirmUpdateValue() {
 
 onMounted(fetchActivities);
 </script>
+
+<style scoped>
+.activity-card {
+  transition: all 0.3s ease;
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+
+.activity-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+.activity-image {
+  border-radius: 0;
+  transition: transform 0.3s ease;
+}
+
+.activity-card:hover .activity-image {
+  transform: scale(1.05);
+}
+
+.activity-placeholder {
+  border-radius: 0;
+}
+
+/* Custom chip styling */
+.v-chip {
+  font-weight: 500;
+}
+
+/* Status badge positioning */
+.position-absolute {
+  position: absolute;
+}
+
+/* Smooth transitions for all interactive elements */
+.v-btn {
+  transition: all 0.2s ease;
+}
+
+.v-btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Card content improvements */
+.v-card-text {
+  padding: 20px !important;
+}
+
+.v-card-actions {
+  padding: 0 20px 20px 20px !important;
+}
+
+/* Header improvements */
+.text-h4 {
+  background: linear-gradient(45deg, #1976d2, #42a5f5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Feature tags styling */
+.v-chip.v-chip--size-x-small {
+  height: 20px;
+  font-size: 10px;
+}
+
+/* Progress bar improvements */
+.v-progress-linear {
+  border-radius: 3px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 960px) {
+  .activity-card {
+    margin-bottom: 16px;
+  }
+}
+
+/* Animation for card loading */
+.activity-card {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Gradient overlay for better text readability on images */
+.v-img::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 60%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+  pointer-events: none;
+}
+
+/* Enhanced button styling */
+.v-btn--variant-flat {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.v-btn--variant-outlined {
+  border-width: 1.5px;
+}
+</style>
