@@ -453,6 +453,40 @@
 
 
 
+    <!-- Review Reminder Dialog -->
+    <v-dialog v-model="reviewReminderDialog.open" max-width="500">
+      <v-card>
+        <v-card-title class="text-h6">
+          <v-icon class="mr-2" color="primary">mdi-star-outline</v-icon>
+          Review Your Activities
+        </v-card-title>
+        <v-card-text>
+          <p class="mb-3">You have completed activities that haven't been reviewed yet. Your feedback helps other travelers!</p>
+          
+          <div v-for="booking in unreviewedBookings" :key="booking.id" class="mb-3">
+            <v-card variant="outlined" class="pa-3">
+              <div class="font-weight-bold">{{ booking.activitySchedule?.activity?.name }}</div>
+              <div class="text-caption">{{ formatDate(booking.activitySchedule?.endTime) }}</div>
+              <v-btn 
+                size="small" 
+                color="primary" 
+                class="mt-2"
+                @click="goToReviewActivity(booking)"
+              >
+                Review Now
+              </v-btn>
+            </v-card>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="dismissReviewReminder">
+            Maybe Later
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-snackbar v-model="snackbar.open" :timeout="2500">
       {{ snackbar.msg }}
     </v-snackbar>
@@ -505,6 +539,10 @@ const reviewDialog = reactive({
 const showAll = ref(false);
 const selectedSchedule = reactive({});
 const snackbar = reactive({ open: false, msg: '' });
+
+// Review reminder dialog
+const reviewReminderDialog = reactive({ open: false });
+const unreviewedBookings = ref([]);
 
 const bookingDialog = reactive({ open: false, activity: null });
 const cancelDialog = reactive({
@@ -1000,6 +1038,41 @@ async function deleteReview(booking) {
   }
 }
 
+function checkForUnreviewedBookings() {
+  // Check if user dismissed the reminder recently (within 24 hours)
+  const dismissedTime = localStorage.getItem('dismissedReviewReminder');
+  if (dismissedTime) {
+    const dismissedDate = new Date(dismissedTime);
+    const now = new Date();
+    const hoursSinceDismissed = (now - dismissedDate) / (1000 * 60 * 60);
+    if (hoursSinceDismissed < 24) {
+      return; // Don't show popup if dismissed within last 24 hours
+    }
+  }
+
+  // Find bookings that are finished but not reviewed
+  const unreviewed = bookings.value.filter(b => 
+    new Date(b.activitySchedule?.endTime) < new Date() && !b.review && !b.isCancelled
+  );
+
+  if (unreviewed.length > 0) {
+    unreviewedBookings.value = unreviewed;
+    reviewReminderDialog.open = true;
+  }
+}
+
+function dismissReviewReminder() {
+  reviewReminderDialog.open = false;
+  // Store dismissal timestamp to avoid showing again for 24 hours
+  localStorage.setItem('dismissedReviewReminder', new Date().toISOString());
+}
+
+function goToReviewActivity(booking) {
+  // Close the reminder dialog and open the review dialog for this booking
+  reviewReminderDialog.open = false;
+  openReviewDialog(booking);
+}
+
 
 
 onMounted(async () => {
@@ -1008,6 +1081,8 @@ onMounted(async () => {
   await fetchRecommendations()
   await fetchActivities()
   await fetchBookings()
+  // Check for unreviewed bookings after all data is loaded
+  checkForUnreviewedBookings()
 })
 
 </script>
