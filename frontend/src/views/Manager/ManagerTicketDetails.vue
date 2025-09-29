@@ -1,94 +1,134 @@
-<!-- src/views/TicketDetails.vue -->
+<!-- src/views/ManagerTicketDetails.vue -->
 <template>
-  <v-container class="py-6">
-    <v-card class="ticket-card" elevation="0">
-      <!-- Segmented header (tabs stilizovani kao na skici) -->
-      <div class="segmented-header">
-        <button class="seg-btn" :class="{ active: activeTab==='overview' }" @click="activeTab='overview'">
-          Overview
-        </button>
-        <button class="seg-btn" :class="{ active: activeTab==='sla' }" @click="activeTab='sla'">
-          Status & SLA
-        </button>
-        <button class="seg-btn" :class="{ active: activeTab==='eco' }" @click="activeTab='eco'">
-          Escalations & Compensations
-        </button>
+  <v-container class="page-container">
+    <!-- Warm-themed Header -->
+    <div class="page-header">
+      <div class="header-content">
+        <div class="header-icon">
+          <v-icon size="32" color="white">mdi-ticket-confirmation</v-icon>
+        </div>
+        <div class="header-text">
+          <h1 class="page-title">Ticket Details</h1>
+          <p class="page-subtitle">Case #{{ ticket.id || 'Loading...' }}</p>
+        </div>
       </div>
+    </div>
 
-      <v-window v-model="activeTab" class="content-wrap">
+    <!-- Enhanced Tab Navigation -->
+    <v-card class="tabs-card">
+      <v-tabs
+        v-model="activeTab"
+        class="warm-tabs"
+        color="primary"
+        slider-color="primary"
+      >
+        <v-tab value="overview" prepend-icon="mdi-eye">
+          Overview
+        </v-tab>
+        <v-tab value="sla" prepend-icon="mdi-clock-check">
+          Status & SLA
+        </v-tab>
+        <v-tab value="eco" prepend-icon="mdi-account-cash">
+          Escalations & Compensations
+        </v-tab>
+      </v-tabs>
+    </v-card>
+
+    <!-- Tab Content -->
+    <v-card class="content-card">
+      <v-window v-model="activeTab">
         <!-- ================= OVERVIEW ================= -->
         <v-window-item value="overview">
-          <div class="section">
-            <v-row class="ov-grid" no-gutters>
-              <!-- LEFT: KV lista -->
-              <v-col cols="12" md="6" class="left-kv">
-                <Kv label="Subject"       :value="ticket.subject" />
-                <Kv label="Case ID"       :value="ticket.id" />
-                <Kv label="Reservation"   :value="ticket.reservation?.code ?? ticket.reservationCode" />
-                <Kv label="Passenger"     :value="fullName || '—'" />
-                <Kv label="Category"      :value="ticket.category" />
-                <Kv label="Status"        :value="ticket.status?.name || ticket.status?.code || ticket.status" />
-                <Kv label="Date Created"  :value="fmtDate(ticket.createdAt)" />
-                <Kv label="Priority"      :value="ticket.priority" />
-              </v-col>
-
-              <!-- RIGHT: meta + attachments -->
-              <v-col cols="12" md="6" class="right-meta">
-                <div class="two-col-list">
-                  <div class="row">
-                    <div class="label">Date Created:</div>
-                    <div class="value">{{ fmtDate(ticket.createdAt) }}</div>
-                  </div>
-                  <div class="row">
-                    <div class="label">Last Activity:</div>
-                    <div class="value">{{ fmtDate(ticket.lastActivityAt) }}</div>
-                  </div>
-                  <div class="row">
-                    <div class="label">Assigned:</div>
-                    <div class="value">{{ ticket.assigneeUsername || '—' }}</div>
+          <div class="overview-content">
+            <v-row>
+              <!-- Left Side - Ticket Details -->
+              <v-col cols="12" md="6">
+                <div class="details-section">
+                  <h3 class="section-title">
+                    <v-icon class="mr-2">mdi-information</v-icon>
+                    Ticket Information
+                  </h3>
+                  <div class="details-grid">
+                    <div class="detail-item">
+                      <span class="label">Subject:</span>
+                      <span class="value">{{ ticket.subject || 'No subject' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Case ID:</span>
+                      <span class="value case-id">#{{ ticket.id }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Reservation:</span>
+                      <span class="value">{{ (ticket.reservation?.code ?? ticket.reservationCode) || '—' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Passenger:</span>
+                      <span class="value">{{ fullName || '—' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Category:</span>
+                      <v-chip size="small" :color="getCategoryColor(ticket.category)" variant="tonal">
+                        <v-icon size="14" class="mr-1">{{ getCategoryIcon(ticket.category) }}</v-icon>
+                        {{ ticket.category || 'Other' }}
+                      </v-chip>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Status:</span>
+                      <v-chip size="small" :color="getStatusColor(ticket.status)" variant="tonal">
+                        <v-icon size="14" class="mr-1">{{ getStatusIcon(ticket.status) }}</v-icon>
+                        {{ ticket.status?.name || ticket.status?.code || ticket.status || 'Unknown' }}
+                      </v-chip>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Priority:</span>
+                      <v-chip size="small" :color="getPriorityColor(ticket.priority)" variant="flat">
+                        <v-icon size="14" class="mr-1">{{ getPriorityIcon(ticket.priority) }}</v-icon>
+                        {{ ticket.priority || 'Low' }}
+                      </v-chip>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Date Created:</span>
+                      <span class="value">{{ fmtDate(ticket.createdAt) }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Assigned To:</span>
+                      <span class="value">{{ ticket.assigneeUsername || 'Unassigned' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Last Activity:</span>
+                      <span class="value">{{ fmtDate(ticket.lastActivityAt) }}</span>
+                    </div>
                   </div>
                 </div>
+              </v-col>
 
-                <!-- Attachments -->
-                <div class="att-wrap">
-                  <div class="att-title">Attachments</div>
-
-                  <div class="att-box">
-                    <button class="att-arrow left" @click="scrollAttachments(-1)">
-                      <v-icon size="20">mdi-chevron-left</v-icon>
-                    </button>
-
-                    <div class="att-viewport">
-                      <div class="att-track" ref="attTrack">
-                        <a
-                          v-for="(a, i) in attachments"
-                          :key="a.id || i"
-                          class="att-item"
-                          :href="a.url || '#'"
-                          target="_blank"
-                          rel="noopener"
-                          :title="a.name || 'attachment'"
-                          :style="{ cursor: a.url ? 'pointer' : 'not-allowed', opacity: a.url ? 1 : 0.6 }"
-                          @click.prevent="a.url && openFile(a.url)"
-                        >
-                          <div class="thumb">
-                            <v-icon v-if="a.type==='image'">mdi-image</v-icon>
-                            <v-icon v-else-if="a.type==='pdf'">mdi-file-pdf-box</v-icon>
-                            <v-icon v-else>mdi-file</v-icon>
-                          </div>
-                          <div class="caption" :title="a.name">{{ a.label || a.name }}</div>
-                        </a>
-
-                        <div v-if="!attachments?.length" class="empty-state">
-                          <v-icon size="24" class="mr-2">mdi-folder-open-outline</v-icon>
-                          No attachments
-                        </div>
+              <!-- Right Side - Attachments -->
+              <v-col cols="12" md="6">
+                <div class="attachments-section">
+                  <h3 class="section-title">
+                    <v-icon class="mr-2">mdi-paperclip</v-icon>
+                    Attachments
+                  </h3>
+                  <div class="attachments-grid">
+                    <div
+                      v-for="(a, i) in attachments"
+                      :key="a.id || i"
+                      class="attachment-item"
+                      @click="a.url && openFile(a.url)"
+                      :style="{ cursor: a.url ? 'pointer' : 'not-allowed' }"
+                    >
+                      <div class="attachment-icon">
+                        <v-icon v-if="a.type==='image'" size="32">mdi-image</v-icon>
+                        <v-icon v-else-if="a.type==='pdf'" size="32">mdi-file-pdf-box</v-icon>
+                        <v-icon v-else size="32">mdi-file</v-icon>
                       </div>
+                      <div class="attachment-name">{{ a.label || a.name || 'Untitled' }}</div>
                     </div>
 
-                    <button class="att-arrow right" @click="scrollAttachments(1)">
-                      <v-icon size="20">mdi-chevron-right</v-icon>
-                    </button>
+                    <div v-if="!attachments?.length" class="no-attachments">
+                      <v-icon size="48" color="grey">mdi-folder-open-outline</v-icon>
+                      <p class="mt-2">No attachments</p>
+                    </div>
                   </div>
                 </div>
               </v-col>
@@ -98,70 +138,108 @@
 
         <!-- ================= STATUS & SLA ================= -->
         <v-window-item value="sla">
-          <div class="section">
-            <div class="sub-title mb-2">Status History</div>
-            <v-table class="history-table" fixed-header height="260">
-              <thead>
-                <tr>
-                  <th>Status</th>
-                  <th>Valid From</th>
-                  <th>Note</th>
-                  <th>Changed By</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(h, i) in history" :key="i">
-                  <td>{{ h.toStatusName }}</td>
-                  <td>{{ fmtDayTime(h.changedAt) }}</td>
-                  <td>{{ h.note || '—' }}</td>
-                  <td>{{ h.changedByUsername }}</td>
-                </tr>
-                <tr v-if="!history.length">
-                  <td colspan="4" class="text-medium-emphasis">No history.</td>
-                </tr>
-              </tbody>
-            </v-table>
-
-            <v-row class="mt-4" dense>
-              <!-- SLA metrics -->
+          <div class="sla-content">
+            <v-row>
+              <!-- Left Side - Status History -->
               <v-col cols="12" md="6">
-                <div class="sub-title mb-2">SLA Metrics</div>
-                <div class="metrics">
-                  <Kv label="First Response Due"     :value="fmtDayTime(sla.firstResponseAt)" />
-                  <Kv label="Time to First Response" :value="sla.tfr" />
-                  <Kv label="Resolution Due"         :value="fmtDayTime(sla.resolutionDue)" />
-                  <Kv label="Time to Resolution"     :value="sla.ttr" />
-                  <Kv label="Number of Breaches"     :value="sla.breaches" />
-                  <div class="metric-dot">
-                    <span>SLA Compliance %</span>
-                    <div class="dot-row">
-                      <span class="percent">{{ sla.compliance }}%</span>
-                      <v-icon color="red">mdi-circle</v-icon>
+                <div class="history-section">
+                  <h3 class="section-title">
+                    <v-icon class="mr-2">mdi-history</v-icon>
+                    Status History
+                  </h3>
+                  <v-table class="history-table">
+                    <thead>
+                      <tr>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Changed By</th>
+                        <th>Note</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(h, i) in history" :key="i">
+                        <td>
+                          <v-chip size="small" :color="getStatusColor(h.toStatusName)" variant="tonal">
+                            {{ h.toStatusName }}
+                          </v-chip>
+                        </td>
+                        <td>{{ fmtDayTime(h.changedAt) }}</td>
+                        <td>{{ h.changedByUsername || '—' }}</td>
+                        <td>{{ h.note || '—' }}</td>
+                      </tr>
+                      <tr v-if="!history.length">
+                        <td colspan="4" class="text-center text-grey">No history available</td>
+                      </tr>
+                    </tbody>
+                  </v-table>
+                </div>
+
+                <!-- SLA Metrics -->
+                <div class="sla-metrics-section mt-6">
+                  <h3 class="section-title">
+                    <v-icon class="mr-2">mdi-clock-check</v-icon>
+                    SLA Metrics
+                  </h3>
+                  <div class="metrics-grid">
+                    <div class="metric-card">
+                      <div class="metric-label">First Response Due</div>
+                      <div class="metric-value">{{ fmtDayTime(sla.firstResponseAt) }}</div>
+                    </div>
+                    <div class="metric-card">
+                      <div class="metric-label">Time to First Response</div>
+                      <div class="metric-value">{{ sla.tfr || '—' }}</div>
+                    </div>
+                    <div class="metric-card">
+                      <div class="metric-label">Resolution Due</div>
+                      <div class="metric-value">{{ fmtDayTime(sla.resolutionDue) }}</div>
+                    </div>
+                    <div class="metric-card">
+                      <div class="metric-label">Time to Resolution</div>
+                      <div class="metric-value">{{ sla.ttr || '—' }}</div>
+                    </div>
+                    <div class="metric-card">
+                      <div class="metric-label">Number of Breaches</div>
+                      <div class="metric-value">{{ sla.breaches || 0 }}</div>
+                    </div>
+                    <div class="metric-card compliance">
+                      <div class="metric-label">SLA Compliance</div>
+                      <div class="compliance-value">
+                        <span class="percentage">{{ sla.compliance || 0 }}%</span>
+                        <v-icon :color="sla.compliance >= 90 ? 'success' : 'error'">
+                          {{ sla.compliance >= 90 ? 'mdi-check-circle' : 'mdi-alert-circle' }}
+                        </v-icon>
+                      </div>
                     </div>
                   </div>
                 </div>
               </v-col>
 
-              <!-- Timeline -->
+              <!-- Right Side - Timeline -->
               <v-col cols="12" md="6">
-                <div class="sub-title mb-2">Timeline</div>
-
-                <div class="tl-wrap">
-                  <div class="tl-line"></div>
-
-                  <div
-                    class="tl-track"
-                    :class="{
-                      centered: timeline.length === 1,
-                      spread: timeline.length > 1
-                    }"
-                  >
-                    <div v-for="(t,i) in timeline" :key="i" class="tl-dot">
-                      <div class="dot"></div>
-                      <div class="tl-meta">
-                        <div class="tl-status">{{ t.toStatusName }}</div>
-                        <div class="tl-date">{{ fmtDay(t.changedAt) }}</div>
+                <div class="timeline-section">
+                  <h3 class="section-title">
+                    <v-icon class="mr-2">mdi-timeline</v-icon>
+                    Status Timeline
+                  </h3>
+                  <div class="timeline-container">
+                    <div 
+                      v-for="(t, i) in timeline" 
+                      :key="i" 
+                      class="timeline-item"
+                      :class="{ 'is-last': i === timeline.length - 1 }"
+                    >
+                      <div class="timeline-dot">
+                        <v-icon size="16" color="white">{{ getStatusIcon(t.toStatusName) }}</v-icon>
                       </div>
+                      <div class="timeline-content">
+                        <div class="timeline-status">{{ t.toStatusName }}</div>
+                        <div class="timeline-date">{{ fmtDay(t.changedAt) }}</div>
+                        <div v-if="t.note" class="timeline-note">{{ t.note }}</div>
+                      </div>
+                    </div>
+                    <div v-if="!timeline.length" class="no-timeline">
+                      <v-icon size="48" color="grey">mdi-timeline-outline</v-icon>
+                      <p class="mt-2">No timeline data</p>
                     </div>
                   </div>
                 </div>
@@ -172,106 +250,177 @@
 
         <!-- ================= ESCALATIONS & COMPENSATIONS ================= -->
         <v-window-item value="eco">
-          <div class="section">
-            <!-- Actions toolbar -->
-            <div class="eco-actions">
-              <div class="left-group"></div>
-              <div class="right-group">
-                <v-btn
-                  size="small"
-                  variant="tonal"
-                  prepend-icon="mdi-arrow-up-bold-box"
-                  :loading="acceptingEsc"
-                  :disabled="!canAcceptEscalation"
-                  @click="acceptEscalation"
-                  class="mr-2"
-                >
-                  Accept Escalation
-                </v-btn>
-
-                <v-btn
-                  size="small"
-                  color="primary"
-                  prepend-icon="mdi-cash-plus"
-                  @click="openCreateCompDialog"
-                  class="mr-2"
-                >
-                  Create Compensation
-                </v-btn>
-
-                <v-btn
-                  size="small"
-                  color="error"
-                  prepend-icon="mdi-check-circle"
-                  :loading="closingTicket"
-                  :disabled="!canCloseTicket"
-                  @click="closeTicket"
-                >
-                  Close Ticket
-                </v-btn>
-              </div>
+          <div class="eco-content">
+            <!-- Action Buttons -->
+            <div class="action-toolbar">
+              <v-btn
+                variant="outlined"
+                prepend-icon="mdi-arrow-up-bold-box"
+                :loading="acceptingEsc"
+                :disabled="!canAcceptEscalation"
+                @click="acceptEscalation"
+                class="action-btn"
+              >
+                Accept Escalation
+              </v-btn>
+              <v-btn
+                color="primary"
+                prepend-icon="mdi-cash-plus"
+                @click="openCreateCompDialog"
+                class="action-btn primary-btn"
+              >
+                Create Compensation
+              </v-btn>
+              <v-btn
+                color="error"
+                prepend-icon="mdi-check-circle"
+                :loading="closingTicket"
+                :disabled="!canCloseTicket"
+                @click="closeTicket"
+                class="action-btn"
+              >
+                Close Ticket
+              </v-btn>
             </div>
 
-            <v-row dense>
+            <v-row>
+              <!-- Escalation Details -->
               <v-col cols="12" md="6">
-                <div class="panel">
-                  <div class="panel-title">Escalation</div>
-                  <Kv label="Reason"       :value="escalation.reason" />
-                  <Kv label="Date"         :value="fmtDay(escalation.escalatedAt)" />
-                  <Kv label="Escalated By" :value="escalation.complaint.createdByUsername" />
-                  <Kv label="Received By"  :value="escalation.managerUsername" />
-                  <Kv label="Status"       :value="escalation.status || '—'" />
+                <div class="escalation-section">
+                  <h3 class="section-title">
+                    <v-icon class="mr-2">mdi-alert-octagon</v-icon>
+                    Escalation Details
+                  </h3>
+                  <div class="details-grid">
+                    <div class="detail-item">
+                      <span class="label">Reason:</span>
+                      <v-chip size="small" :color="getEscalationReasonColor(escalation.reason)" variant="tonal">
+                        {{ escalation.reason || 'Not specified' }}
+                      </v-chip>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Date Escalated:</span>
+                      <span class="value">{{ fmtDay(escalation.escalatedAt) }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Escalated By:</span>
+                      <span class="value">{{ escalation.complaint?.createdByUsername || '—' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Assigned Manager:</span>
+                      <span class="value">{{ escalation.managerUsername || '—' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Status:</span>
+                      <v-chip size="small" :color="getStatusColor(escalation.status)" variant="tonal">
+                        {{ escalation.status || 'Unknown' }}
+                      </v-chip>
+                    </div>
+                  </div>
+                </div>
+              </v-col>
+
+              <!-- Compensation Proposals -->
+              <v-col cols="12" md="6">
+                <div class="compensation-section">
+                  <h3 class="section-title">
+                    <v-icon class="mr-2">mdi-cash-multiple</v-icon>
+                    Compensation Proposals
+                  </h3>
+                  <v-table class="compensation-table">
+                    <thead>
+                      <tr>
+                        <th>Type</th>
+                        <th>Value</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(c, i) in compensations" :key="i">
+                        <td>
+                          <v-chip size="small" :color="getCompensationType(c.type)" variant="tonal">
+                            {{ c.type || 'Unknown' }}
+                          </v-chip>
+                        </td>
+                        <td class="font-weight-bold">{{ c.value || '—' }}</td>
+                        <td>{{ fmtDay(c.date) }}</td>
+                        <td>
+                          <div class="compensation-actions">
+                            <v-btn 
+                              size="small" 
+                              color="success" 
+                              variant="outlined"
+                              @click="approveComp(c)"
+                              class="mr-1"
+                            >
+                              Approve
+                            </v-btn>
+                            <v-btn 
+                              size="small" 
+                              color="error" 
+                              variant="outlined"
+                              @click="rejectComp(c)"
+                            >
+                              Reject
+                            </v-btn>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr v-if="!compensations.length">
+                        <td colspan="4" class="text-center text-grey">No compensation proposals</td>
+                      </tr>
+                    </tbody>
+                  </v-table>
                 </div>
               </v-col>
             </v-row>
 
-            <!-- Compensation Proposals -->
-            <div class="sub-title mt-6 mb-2">Compensation Proposals</div>
-            <v-table class="comp-table">
-              <thead>
-                <tr>
-                  <th>Type</th>
-                  <th>Value</th>
-                  <th>Date Proposed</th>
-                  <th style="text-align:right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(c, i) in compensations" :key="i">
-                  <td>{{ c.type }}</td>
-                  <td>{{ c.value }}</td>
-                  <td>{{ fmtDay(c.date) }}</td>
-                  <td class="text-right">
-                    <v-btn size="small" color="primary" class="mr-2" @click="approveComp(c)">Approve</v-btn>
-                    <v-btn size="small" variant="outlined" @click="rejectComp(c)">Reject</v-btn>
-                  </td>
-                </tr>
-                <tr v-if="!compensations.length">
-                  <td colspan="4" class="text-medium-emphasis">No proposals.</td>
-                </tr>
-              </tbody>
-            </v-table>
-
             <!-- Internal Discussion -->
-            <div class="sub-title mt-6 mb-2">Internal Discussion</div>
-            <div class="panel chat">
-              <div class="chat-body" ref="chatBody" @scroll="onChatScroll">
-                <div
-                  v-for="(m, i) in internalMessages"
-                  :key="i"
-                  class="msg"
-                  :class="m.me ? 'me' : 'them'"
-                >
-                  <v-icon size="16" class="mr-1">mdi-account</v-icon>
-                  <div class="bubble">
-                    <div class="text">{{ m.content }}</div>
-                    <div class="time">{{ fmtDate(m.time || m.createdAt) }}</div>
+            <div class="discussion-section mt-6">
+              <h3 class="section-title">
+                <v-icon class="mr-2">mdi-chat</v-icon>
+                Internal Discussion
+              </h3>
+              <v-card class="chat-container">
+                <div class="chat-messages" ref="chatBody" @scroll="onChatScroll">
+                  <div
+                    v-for="(m, i) in internalMessages"
+                    :key="i"
+                    class="message"
+                    :class="{ 'own-message': m.me }"
+                  >
+                    <div class="message-bubble">
+                      <div class="message-content">{{ m.content }}</div>
+                      <div class="message-time">{{ fmtDate(m.time || m.createdAt) }}</div>
+                    </div>
+                  </div>
+                  <div v-if="!internalMessages.length" class="no-messages">
+                    <v-icon size="48" color="grey">mdi-chat-outline</v-icon>
+                    <p class="mt-2">No internal messages yet</p>
                   </div>
                 </div>
-                <div v-if="!internalMessages.length" class="text-medium-emphasis">
-                  No messages yet.
+
+                <div class="chat-input">
+                  <v-text-field
+                    v-model="draft"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                    placeholder="Type your message..."
+                    @keydown.enter.prevent="sendInternal"
+                    class="flex-1"
+                  />
+                  <v-btn 
+                    color="primary" 
+                    :loading="sending" 
+                    @click="sendInternal"
+                    class="ml-2"
+                  >
+                    Send
+                  </v-btn>
                 </div>
-              </div>
+              </v-card>
 
               <v-btn
                 v-show="showChatScrollBtn"
@@ -283,37 +432,24 @@
                 Jump to latest
                 <v-icon end>mdi-arrow-down</v-icon>
               </v-btn>
-
-              <div class="chat-compose">
-                <v-text-field
-                  v-model="draft"
-                  density="compact"
-                  variant="outlined"
-                  hide-details
-                  placeholder="Enter a message"
-                  class="flex-1"
-                  @keydown.enter.prevent="sendInternal"
-                />
-                <v-btn class="ml-2" :loading="sending" @click="sendInternal">Send</v-btn>
-              </div>
             </div>
-
-            <!-- Create Compensation dialog (manager) -->
-            <ProposeCompensationDialog
-              v-model="createCompDialog"
-              :ticket="{
-                id: ticket.id,
-                subject: ticket.subject || ticket.category || '—',
-                passenger: fullName || '—'
-              }"
-              default-currency="EUR"
-              default-type="VOUCHER"
-              @submit="handleCreateComp"
-            />
           </div>
         </v-window-item>
       </v-window>
     </v-card>
+
+    <!-- Create Compensation Dialog -->
+    <ProposeCompensationDialog
+      v-model="createCompDialog"
+      :ticket="{
+        id: ticket.id,
+        subject: ticket.subject || ticket.category || '—',
+        passenger: fullName || '—'
+      }"
+      default-currency="EUR"
+      default-type="VOUCHER"
+      @submit="handleCreateComp"
+    />
   </v-container>
 </template>
 
@@ -404,6 +540,97 @@ export default {
       if (s.endsWith('.png') || s.endsWith('.jpg') || s.endsWith('.jpeg') || s.endsWith('.gif') || s.startsWith('image/')) return 'image'
       if (s.endsWith('.pdf') || s.startsWith('application/pdf')) return 'pdf'
       return 'file'
+    },
+
+    // ========= Style Helpers for Warm Theme =========
+    getCategoryColor(category) {
+      switch (String(category || '').toLowerCase()) {
+        case 'accommodation': return 'purple'
+        case 'transport': return 'blue'
+        case 'finance': return 'green'
+        case 'support': return 'orange'
+        default: return 'grey'
+      }
+    },
+
+    getCategoryIcon(category) {
+      switch (String(category || '').toLowerCase()) {
+        case 'accommodation': return 'mdi-bed'
+        case 'transport': return 'mdi-bus'
+        case 'finance': return 'mdi-currency-usd'
+        case 'support': return 'mdi-help-circle'
+        default: return 'mdi-tag'
+      }
+    },
+
+    getStatusColor(status) {
+      const statusStr = String(status?.name || status?.code || status || '').toLowerCase()
+      switch (statusStr) {
+        case 'open':
+        case 'new': return 'info'
+        case 'in progress':
+        case 'in_progress': return 'warning'
+        case 'resolved':
+        case 'closed': return 'success'
+        case 'escalated': return 'error'
+        default: return 'grey'
+      }
+    },
+
+    getStatusIcon(status) {
+      const statusStr = String(status?.name || status?.code || status || '').toLowerCase()
+      switch (statusStr) {
+        case 'open':
+        case 'new': return 'mdi-circle-outline'
+        case 'in progress':
+        case 'in_progress': return 'mdi-progress-clock'
+        case 'resolved':
+        case 'closed': return 'mdi-check-circle'
+        case 'escalated': return 'mdi-alert-circle'
+        default: return 'mdi-help-circle'
+      }
+    },
+
+    getPriorityColor(priority) {
+      switch (String(priority || '').toLowerCase()) {
+        case 'critical': return 'error'
+        case 'high': return 'deep-orange'
+        case 'medium': return 'warning'
+        case 'low': return 'success'
+        default: return 'grey'
+      }
+    },
+
+    getPriorityIcon(priority) {
+      switch (String(priority || '').toLowerCase()) {
+        case 'critical': return 'mdi-fire'
+        case 'high': return 'mdi-arrow-up-bold'
+        case 'medium': return 'mdi-minus'
+        case 'low': return 'mdi-arrow-down-bold'
+        default: return 'mdi-flag-outline'
+      }
+    },
+
+    getEscalationReasonColor(reason) {
+      switch (String(reason || '').toLowerCase()) {
+        case 'sla violation': 
+        case 'sla_violation': return 'error'
+        case 'customer complaint':
+        case 'customer_complaint': return 'warning'
+        case 'complexity':
+        case 'technical issue':
+        case 'technical_issue': return 'info'
+        default: return 'primary'
+      }
+    },
+
+    getCompensationType(type) {
+      switch (String(type || '').toLowerCase()) {
+        case 'refund': return 'success'
+        case 'voucher': return 'primary'
+        case 'discount': return 'warning'
+        default: return 'grey'
+      }
     },
 
     // ========= API =========
@@ -656,137 +883,653 @@ export default {
 }
 </script>
 
-<style scoped>
-.ticket-card { background: rgb(var(--v-theme-surface)); }
-
-.segmented-header{
-  display:grid; grid-template-columns:1fr 1fr 1fr;
-  border:1px solid rgba(0,0,0,.28); border-radius:8px; overflow:hidden;
-  margin:4px 16px 0;
-}
-.seg-btn{
-  appearance:none; background:transparent; border:0; padding:10px 12px;
-  font-weight:600; text-align:center; cursor:pointer;
-  border-right:1px solid rgba(0,0,0,.28);
-}
-.seg-btn:last-child{ border-right:0; }
-.seg-btn.active{ background:rgba(0,0,0,.05); }
-
-.content-wrap{ padding:8px 12px 16px; }
-.section{
-  border:1px solid rgba(0,0,0,.28); border-radius:8px;
-  padding:16px; margin-top:12px;
+<style scoped lang="scss">
+:root {
+  --warm-primary: #D4730A;
+  --warm-secondary: #F59E0B;
+  --warm-accent: #F97316;
+  --warm-light: #FEF3E2;
+  --warm-lighter: #FFFBF5;
+  --warm-gradient: linear-gradient(135deg, #D4730A 0%, #F59E0B 100%);
+  --warm-gradient-light: linear-gradient(135deg, #FEF3E2 0%, #FFFBF5 100%);
 }
 
-/* Overview layout */
-.ov-grid{ border-top:1px solid rgba(0,0,0,.18); padding-top:12px; }
-.left-kv .kv-row{
-  display:grid; grid-template-columns:180px 1fr; gap:6px 16px; padding:4px 0;
-}
-.kv-label{ font-weight:600;}
-
-/* Right meta */
-.right-meta .two-col-list{ margin-bottom:12px; }
-.two-col-list .row{
-  display:grid; grid-template-columns:140px 1fr; padding:4px 0;
-}
-.two-col-list .label{ font-weight:600; }
-
-/* Attachments */
-.att-wrap{ margin-top:8px; }
-.att-title{ font-weight:600; margin-bottom:6px; }
-.att-box{
-  position:relative; border:1px solid rgba(0,0,0,.35); border-radius:8px;
-  padding:12px 36px; min-height:148px; background:#fff;
-}
-.att-viewport{ overflow:hidden; }
-.att-track{ display:flex; gap:14px; padding:4px; scroll-behavior:smooth; }
-.att-item{
-  min-width:120px; max-width:120px; border:1px solid rgba(0,0,0,.2);
-  border-radius:10px; padding:8px; text-align:center; background:#fff;
-}
-.thumb{
-  height:86px; display:flex; align-items:center; justify-content:center;
-  border:1px dashed rgba(0,0,0,.25); border-radius:8px;
-}
-.caption{
-  font-size:12px; opacity:.85; margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-.att-arrow{
-  position:absolute; top:50%; transform:translateY(-50%);
-  width:30px; height:30px; border:1px solid rgba(0,0,0,.25);
-  border-radius:999px; display:grid; place-items:center; background:#fff;
-  box-shadow:0 4px 12px rgba(0,0,0,.06);
-}
-.att-arrow.left{ left:6px } .att-arrow.right{ right:6px }
-.empty-state{
-  display:flex; align-items:center; justify-content:center; min-height:96px; width:100%;
-  color:rgba(0,0,0,.6); border:1px dashed rgba(0,0,0,.18); border-radius:8px;
+.page-container {
+  padding: 24px;
+  background: var(--warm-lighter);
+  min-height: 100vh;
 }
 
-/* Tables */
-.v-table.history-table thead th,
-.v-table.comp-table thead th{
-  font-weight:700; background:rgba(0,0,0,.04);
-}
-.v-table.history-table tbody tr:nth-child(odd),
-.v-table.comp-table tbody tr:nth-child(odd){
-  background:rgba(0,0,0,.02);
+.page-header {
+  background: var(--warm-gradient);
+  border-radius: 16px;
+  padding: 24px 32px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(212, 115, 10, 0.15);
+  animation: slideInFromTop 0.6s ease-out;
+
+  .header-content {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    .header-icon {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 12px;
+      backdrop-filter: blur(10px);
+    }
+
+    .header-text {
+      .page-title {
+        color: white;
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .page-subtitle {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1.1rem;
+        margin: 4px 0 0 0;
+        font-weight: 400;
+      }
+    }
+  }
 }
 
-/* Timeline */
-.tl-wrap{ position:relative; padding:22px 6px 8px; }
-.tl-line{
-  position:absolute; left:12px; right:12px; top:30px; height:1px; background:rgba(0,0,0,.22);
-}
-.tl-track{
-  position:relative; display:flex; align-items:flex-start; gap:16px; margin-top:14px;
-}
-.tl-track.centered{ justify-content:center; }
-.tl-track.spread{ justify-content:space-between; }
-.tl-dot{ display:flex; flex-direction:column; align-items:center; text-align:center; min-width:0; }
-.dot{
-  width:12px; height:12px; border-radius:999px; background:#e53935; border:2px solid #fff;
-  box-shadow:0 0 0 2px #e53935;
-}
-.tl-meta{ margin-top:6px; max-width:160px; }
-.tl-status{ font-weight:600; }
-.tl-date{ opacity:.8; font-size:.9rem; }
+.tabs-card {
+  border-radius: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(212, 115, 10, 0.1);
+  overflow: hidden;
+  animation: slideInFromLeft 0.6s ease-out 0.1s both;
 
-/* Panels & Chat */
-.panel{
-  border:1px solid rgba(0,0,0,.2); border-radius:8px; padding:12px; background:#fff;
-}
-.panel-title{ font-weight:700; margin-bottom:8px; }
+  :deep(.warm-tabs) {
+    background: var(--warm-gradient-light);
 
-.chat{ position:relative; }
-.chat-body{
-  max-height:300px; overflow:auto; padding:8px;
-  border:1px solid rgba(0,0,0,.12); border-radius:8px; background:rgba(0,0,0,.02);
-}
-.msg{ display:flex; align-items:flex-start; margin:6px 0; }
-.msg.me{ flex-direction:row-reverse; }
-.msg .bubble{
-  max-width:80%; padding:8px 10px; border-radius:10px; background:#fff; border:1px solid rgba(0,0,0,.12);
-}
-.msg.me .bubble{ background:#f3f7ff; }
-.bubble .text{ margin-bottom:4px; }
-.bubble .time{ font-size:.8rem; opacity:.7; text-align:right; }
-.chat-compose{ display:flex; align-items:center; margin-top:8px; }
-.scroll-bottom-btn{
-  position:absolute; right:12px; bottom:64px; z-index:3;
+    .v-tab {
+      color: var(--warm-primary) !important;
+      font-weight: 600 !important;
+      text-transform: none !important;
+      
+      &--selected {
+        color: var(--warm-primary) !important;
+        background: rgba(212, 115, 10, 0.1);
+      }
+    }
+
+    .v-tab-item {
+      border-radius: 12px 12px 0 0;
+    }
+
+    .v-slide-group__content {
+      background: transparent;
+    }
+  }
 }
 
-/* Actions toolbar */
-.eco-actions{
-  display:flex; align-items:center; justify-content:space-between;
-  margin-bottom:12px;
-}
-.eco-actions .right-group > * + * { margin-left:8px; }
+.content-card {
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(212, 115, 10, 0.1);
+  overflow: hidden;
+  animation: slideInFromRight 0.6s ease-out 0.2s both;
 
-/* Responsive */
-@media (max-width: 959px){
-  .left-kv .kv-row{ grid-template-columns:140px 1fr; }
-  .two-col-list .row{ grid-template-columns:120px 1fr; }
+  .overview-content,
+  .sla-content,
+  .eco-content {
+    padding: 32px;
+  }
+
+  .section-title {
+    color: var(--warm-primary);
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+  }
+
+  // Overview styles
+  .details-section {
+    background: var(--warm-gradient-light);
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid rgba(212, 115, 10, 0.1);
+  }
+
+  .details-grid {
+    display: grid;
+    gap: 16px;
+
+    .detail-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(212, 115, 10, 0.1);
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .label {
+        font-weight: 600;
+        color: var(--warm-primary);
+        min-width: 140px;
+      }
+
+      .value {
+        font-weight: 500;
+        color: #333;
+        
+        &.case-id {
+          background: var(--warm-light);
+          padding: 4px 8px;
+          border-radius: 6px;
+          border: 1px solid rgba(212, 115, 10, 0.2);
+          font-weight: 700;
+          color: var(--warm-primary);
+        }
+      }
+    }
+  }
+
+  // Attachments styles
+  .attachments-section {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid rgba(212, 115, 10, 0.1);
+  }
+
+  .attachments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 16px;
+    min-height: 120px;
+
+    .attachment-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      border: 1px solid rgba(212, 115, 10, 0.2);
+      border-radius: 12px;
+      background: var(--warm-light);
+      transition: all 0.3s ease;
+
+      &:hover {
+        
+        box-shadow: 0 4px 12px rgba(212, 115, 10, 0.2);
+        background: white;
+      }
+
+      .attachment-icon {
+        color: var(--warm-primary);
+        margin-bottom: 8px;
+      }
+
+      .attachment-name {
+        font-size: 0.8rem;
+        text-align: center;
+        color: #666;
+        font-weight: 500;
+      }
+    }
+
+    .no-attachments {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      color: #999;
+      border: 2px dashed rgba(212, 115, 10, 0.2);
+      border-radius: 12px;
+    }
+  }
+
+  // SLA styles
+  .history-section {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid rgba(212, 115, 10, 0.1);
+  }
+
+  .history-table {
+    :deep(thead th) {
+      background: var(--warm-gradient-light) !important;
+      color: var(--warm-primary) !important;
+      font-weight: 600 !important;
+      border-bottom: 2px solid rgba(212, 115, 10, 0.2) !important;
+    }
+
+    :deep(tbody tr) {
+      &:hover {
+        background: var(--warm-light) !important;
+      }
+
+      &:nth-child(odd) {
+        background: rgba(212, 115, 10, 0.03);
+      }
+    }
+  }
+
+  .sla-metrics-section {
+    background: var(--warm-gradient-light);
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid rgba(212, 115, 10, 0.1);
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+
+    .metric-card {
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(212, 115, 10, 0.1);
+      text-align: center;
+
+      &.compliance {
+        background: var(--warm-light);
+        border: 2px solid var(--warm-primary);
+      }
+
+      .metric-label {
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 8px;
+        font-weight: 500;
+      }
+
+      .metric-value {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--warm-primary);
+      }
+
+      .compliance-value {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+
+        .percentage {
+          font-size: 1.4rem;
+          font-weight: 700;
+          color: var(--warm-primary);
+        }
+      }
+    }
+  }
+
+  // Timeline styles
+  .timeline-section {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid rgba(212, 115, 10, 0.1);
+  }
+
+  .timeline-container {
+    position: relative;
+    padding-left: 24px;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 12px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--warm-gradient);
+    }
+
+    .timeline-item {
+      position: relative;
+      margin-bottom: 24px;
+
+      &:not(.is-last)::after {
+        content: '';
+        position: absolute;
+        left: -18px;
+        top: 32px;
+        bottom: -24px;
+        width: 2px;
+        background: rgba(212, 115, 10, 0.3);
+      }
+
+      .timeline-dot {
+        position: absolute;
+        left: -24px;
+        top: 8px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--warm-gradient);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(212, 115, 10, 0.3);
+      }
+
+      .timeline-content {
+        margin-left: 16px;
+
+        .timeline-status {
+          font-weight: 600;
+          color: var(--warm-primary);
+          margin-bottom: 4px;
+        }
+
+        .timeline-date {
+          font-size: 0.9rem;
+          color: #666;
+          margin-bottom: 4px;
+        }
+
+        .timeline-note {
+          font-size: 0.8rem;
+          color: #888;
+          font-style: italic;
+        }
+      }
+    }
+
+    .no-timeline {
+      text-align: center;
+      padding: 32px;
+      color: #999;
+    }
+  }
+
+  // Escalations & Compensations styles
+  .action-toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+
+    .action-btn {
+      border-radius: 12px !important;
+      text-transform: none !important;
+      font-weight: 600 !important;
+      padding: 0 20px !important;
+      height: 40px !important;
+
+      &.primary-btn {
+        background: var(--warm-gradient) !important;
+        color: white !important;
+        box-shadow: 0 4px 12px rgba(212, 115, 10, 0.3);
+
+        &:hover {
+          
+          box-shadow: 0 6px 20px rgba(212, 115, 10, 0.4);
+        }
+      }
+
+      &:not(.primary-btn) {
+        border: 2px solid var(--warm-primary) !important;
+        color: var(--warm-primary) !important;
+
+        &:hover {
+          background: var(--warm-light) !important;
+          
+        }
+      }
+    }
+  }
+
+  .escalation-section,
+  .compensation-section {
+    background: var(--warm-gradient-light);
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid rgba(212, 115, 10, 0.1);
+  }
+
+  .compensation-table {
+    :deep(thead th) {
+      background: var(--warm-gradient-light) !important;
+      color: var(--warm-primary) !important;
+      font-weight: 600 !important;
+      border-bottom: 2px solid rgba(212, 115, 10, 0.2) !important;
+    }
+
+    :deep(tbody tr) {
+      &:hover {
+        background: var(--warm-light) !important;
+      }
+
+      &:nth-child(odd) {
+        background: rgba(212, 115, 10, 0.03);
+      }
+    }
+
+    .compensation-actions {
+      display: flex;
+      gap: 8px;
+    }
+  }
+
+  // Discussion styles
+  .discussion-section {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid rgba(212, 115, 10, 0.1);
+  }
+
+  .chat-container {
+    border: 1px solid rgba(212, 115, 10, 0.2);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .chat-messages {
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 16px;
+    background: var(--warm-lighter);
+
+    .message {
+      display: flex;
+      margin-bottom: 16px;
+
+      &.own-message {
+        flex-direction: row-reverse;
+
+        .message-bubble {
+          background: var(--warm-gradient);
+          color: white;
+          border-radius: 18px 18px 4px 18px;
+        }
+      }
+
+      .message-bubble {
+        max-width: 70%;
+        padding: 12px 16px;
+        background: white;
+        border-radius: 18px 18px 18px 4px;
+        border: 1px solid rgba(212, 115, 10, 0.1);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+        .message-content {
+          font-size: 0.9rem;
+          line-height: 1.4;
+          margin-bottom: 4px;
+        }
+
+        .message-time {
+          font-size: 0.75rem;
+          opacity: 0.7;
+          text-align: right;
+        }
+      }
+    }
+
+    .no-messages {
+      text-align: center;
+      padding: 32px;
+      color: #999;
+    }
+  }
+
+  .chat-input {
+    display: flex;
+    padding: 16px;
+    background: white;
+    border-top: 1px solid rgba(212, 115, 10, 0.1);
+
+    :deep(.v-field) {
+      border-radius: 12px;
+    }
+
+    .v-btn {
+      border-radius: 12px !important;
+      background: var(--warm-gradient) !important;
+      color: white !important;
+    }
+  }
+
+  .scroll-bottom-btn {
+    position: absolute;
+    right: 24px;
+    bottom: 80px;
+    z-index: 10;
+  }
+}
+
+// Animations
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    /* transform: translateY(...) uklonjeno za bolje UX */
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .page-container {
+    padding: 16px;
+  }
+
+  .page-header {
+    padding: 20px 24px;
+    margin-bottom: 20px;
+
+    .header-content {
+      gap: 12px;
+
+      .header-text .page-title {
+        font-size: 1.6rem;
+      }
+    }
+  }
+
+  .content-card {
+    .overview-content,
+    .sla-content,
+    .eco-content {
+      padding: 20px;
+    }
+
+    .details-grid .detail-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+
+      .label {
+        min-width: auto;
+      }
+    }
+
+    .attachments-grid {
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+
+    .metrics-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .action-toolbar {
+      flex-direction: column;
+
+      .action-btn {
+        width: 100% !important;
+      }
+    }
+  }
+}
+
+// Dark mode support
+@media (prefers-color-scheme: dark) {
+  :root {
+    --warm-lighter: #1a1a1a;
+    --warm-light: #2d2d2d;
+  }
+
+  .page-container {
+    background: var(--warm-lighter);
+  }
+
+  .details-grid .detail-item .value {
+    color: #e0e0e0;
+  }
+
+  .attachment-name {
+    color: #b0b0b0;
+  }
+
+  .metric-label {
+    color: #b0b0b0;
+  }
+
+  .timeline-content {
+    .timeline-date,
+    .timeline-note {
+      color: #b0b0b0;
+    }
+  }
+
+  .message-content {
+    color: #333;
+  }
 }
 </style>

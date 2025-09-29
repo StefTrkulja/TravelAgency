@@ -1,0 +1,158 @@
+// Warm Theme Variables and Mixins
+// Color palette for the warm orange/brown theme
+
+:root {
+  // Primary warm colors
+  --warm-primary: #D4730A;
+  --warm-secondary: #F59E0B;
+  --warm-tertiary: #FEF3E8;
+  
+  // Text colors
+  --warm-text: #1C1917;
+  --warm-text-secondary: #78716C;
+  --warm-text-light: #A8A29E;
+  
+  // Background colors
+  --warm-surface: #FFFBF5;
+  --warm-surface-variant: #FEF7ED;
+  --warm-background: #FFFBF5;
+  
+  // Accent colors
+  --warm-orange: #EA580C;
+  --warm-amber: #F59E0B;
+  --warm-brown: #92400E;
+  
+  // Status colors
+  --warm-success: #059669;
+  --warm-warning: #D97706;
+  --warm-error: #DC2626;
+  --warm-info: #0369A1;
+  
+  // Gradients
+  --warm-gradient: linear-gradient(135deg, #D4730A 0%, #F59E0B 100%);
+  --warm-gradient-light: linear-gradient(135deg, #FEF3E8 0%, #FDF7F0 100%);
+  --warm-gradient-dark: linear-gradient(135deg, #92400E 0%, #D4730A 100%);
+  
+  // Shadows
+  --warm-shadow-sm: 0 1px 2px rgba(212, 115, 10, 0.1);
+  --warm-shadow-md: 0 4px 6px rgba(212, 115, 10, 0.15);
+  --warm-shadow-lg: 0 10px 15px rgba(212, 115, 10, 0.2);
+  --warm-shadow-xl: 0 20px 25px rgba(212, 115, 10, 0.25);
+  
+  // Special effects
+  --warm-glow: 0 0 0 3px rgba(212, 115, 10, 0.1);
+  --warm-border-radius: 8px;
+  --warm-border-radius-sm: 6px;
+  --warm-border-radius-md: 12px;
+  --warm-border-radius-lg: 16px;
+}
+
+// Mixins for common warm theme patterns
+@mixin warm-card {
+  background: var(--warm-surface);
+  border-radius: var(--warm-border-radius-md);
+  box-shadow: var(--warm-shadow-md);
+  border: 1px solid rgba(212, 115, 10, 0.1);
+}
+
+@mixin warm-button-primary {
+  background: var(--warm-gradient);
+  color: white;
+  border: none;
+  border-radius: var(--warm-border-radius);
+  box-shadow: var(--warm-shadow-sm);
+  
+  &:hover {
+    box-shadow: var(--warm-shadow-md);
+  }
+  
+  &:focus {
+    box-shadow: var(--warm-glow);
+  }
+}
+
+@mixin warm-button-outline {
+  background: transparent;
+  color: var(--warm-primary);
+  border: 2px solid var(--warm-primary);
+  border-radius: var(--warm-border-radius);
+  
+  &:hover {
+    background: var(--warm-primary);
+    color: white;
+  }
+}
+
+@mixin warm-input {
+  background: var(--warm-surface-variant);
+  border: 1px solid rgba(212, 115, 10, 0.2);
+  border-radius: var(--warm-border-radius);
+  color: var(--warm-text);
+  
+  &:focus {
+    border-color: var(--warm-primary);
+    box-shadow: var(--warm-glow);
+  }
+  
+  &:hover {
+    border-color: var(--warm-secondary);
+  }
+}
+
+// Utility classes
+.warm-text {
+  color: var(--warm-text);
+}
+
+.warm-text-secondary {
+  color: var(--warm-text-secondary);
+}
+
+.warm-bg-primary {
+  background: var(--warm-primary);
+}
+
+.warm-bg-secondary {
+  background: var(--warm-secondary);
+}
+
+.warm-gradient-bg {
+  background: var(--warm-gradient);
+}
+
+.warm-border {
+  border: 1px solid rgba(212, 115, 10, 0.2);
+}
+
+.warm-shadow {
+  box-shadow: var(--warm-shadow-md);
+}
+
+// Animation utilities (kept minimal for better UX)
+.warm-transition {
+  transition: all 0.2s ease;
+}
+
+.warm-transition-slow {
+  transition: all 0.3s ease;
+}
+
+// Focus and hover states
+.warm-focus-ring:focus {
+  outline: none;
+  box-shadow: var(--warm-glow);
+}
+
+.warm-hover-lift:hover {
+  box-shadow: var(--warm-shadow-lg);
+}
+
+// Disabled state
+.warm-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  
+  &:hover {
+    opacity: 0.6;
+  }
+}

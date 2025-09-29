@@ -1,16 +1,22 @@
 <template>
-  <v-container class="py-6">
+  <v-container class="py-6 operator-tickets-container">
     <!-- Header + Filters -->
-    <div class="tickets-header">
-      <h1 class="page-title">Operator Tickets</h1>
-      <v-spacer />
-      <div class="filters">
+    <div class="tickets-header animate-fade-in">
+      <div class="header-content">
+        <v-icon size="32" color="var(--warm-orange)" class="mr-3">mdi-ticket-account</v-icon>
+        <div>
+          <h1 class="page-title font-heading">Operator Tickets</h1>
+          <p class="page-subtitle">Manage and track customer support tickets</p>
+        </div>
+      </div>
+      
+      <div class="filters-section">
         <v-select
           v-model="filters.statusId"
           :items="statusOptions"
           item-title="name"
           item-value="id"
-          label="Status"
+          label="Filter by Status"
           clearable
           density="comfortable"
           variant="outlined"
@@ -18,32 +24,35 @@
           :loading="loading.statuses"
           :disabled="loading.statuses"
           @update:model-value="fetchTickets"
+          prepend-inner-icon="mdi-filter-outline"
         />
         <v-select
           v-model="filters.category"
           :items="categoryOptions"
-          label="Category"
+          label="Filter by Category"
           clearable
           density="comfortable"
           variant="outlined"
           class="filter-item"
           @update:model-value="fetchTickets"
+          prepend-inner-icon="mdi-tag-outline"
         />
         <v-select
           v-model="filters.priority"
           :items="priorityOptions"
-          label="Priority"
+          label="Filter by Priority"
           clearable
           density="comfortable"
           variant="outlined"
           class="filter-item"
           @update:model-value="fetchTickets"
+          prepend-inner-icon="mdi-flag-outline"
         />
       </div>
     </div>
 
     <!-- Table -->
-    <v-card elevation="1">
+    <v-card class="tickets-table-card" elevation="0">
       <v-data-table
         :headers="headers"
         :items="tickets"
@@ -51,41 +60,69 @@
         item-key="id"
         class="operator-table"
         density="comfortable"
+        :items-per-page="15"
       >
         <template #loading>
           <v-skeleton-loader type="table-row@5" />
         </template>
 
         <template #item.subject="{ item }">
-          <div class="cell-title">
-            <div class="subject">{{ item.subject }}</div>
-            <div class="meta">
-              <span>#{{ item.id }}</span>
-              <span>&middot;</span>
-              <span>{{ formatDate(item.createdAt) }}</span>
+          <div class="subject-cell">
+            <div class="subject-title">{{ item.subject }}</div>
+            <div class="subject-meta">
+              <v-chip size="x-small" variant="text" class="ticket-id">#{{ item.id }}</v-chip>
+              <span class="meta-separator">•</span>
+              <span class="created-date">{{ formatDate(item.createdAt) }}</span>
             </div>
           </div>
         </template>
 
         <template #item.category="{ item }">
-          <v-chip size="small" variant="tonal">{{ item.category }}</v-chip>
+          <v-chip 
+            size="small" 
+            variant="tonal" 
+            class="category-chip"
+            :color="getCategoryColor(item.category)"
+          >
+            {{ item.category }}
+          </v-chip>
         </template>
 
         <template #item.priority="{ item }">
-          <v-chip size="small" :color="priorityColor(item.priority)" variant="flat">
+          <v-chip 
+            size="small" 
+            :color="priorityColor(item.priority)" 
+            variant="flat"
+            class="priority-chip"
+          >
+            <v-icon size="16" class="mr-1">{{ getPriorityIcon(item.priority) }}</v-icon>
             {{ item.priority || '—' }}
           </v-chip>
         </template>
 
         <template #item.statusName="{ item }">
-          <v-chip size="small" variant="outlined">
-            {{ item.statusName || item.statusCode || item.status.name }}
+          <v-chip 
+            size="small" 
+            variant="outlined"
+            class="status-chip"
+            :class="`status-${getStatusCode(item)?.toLowerCase()}`"
+          >
+            <v-icon size="16" class="mr-1">{{ getStatusIcon(item) }}</v-icon>
+            {{ item.statusName || item.statusCode || item.status?.name }}
           </v-chip>
         </template>
 
         <template #item.assigneeUsername="{ item }">
-          <span v-if="item.assigneeUsername">{{ item.assigneeUsername }}</span>
-          <span v-else class="text-medium-emphasis">Unassigned</span>
+          <div class="assignee-cell">
+            <v-avatar v-if="item.assigneeUsername" size="24" class="mr-2">
+              <v-icon size="16">mdi-account</v-icon>
+            </v-avatar>
+            <span v-if="item.assigneeUsername" class="assignee-name">{{ item.assigneeUsername }}</span>
+            <span v-else class="unassigned-text">
+              <v-icon size="16" class="mr-1">mdi-account-off</v-icon>
+              Unassigned
+            </span>
+          </div>
         </template>
 
         <template #item.actions="{ item }">
@@ -94,8 +131,11 @@
               v-if="canAccept(item)"
               color="primary"
               size="small"
+              variant="elevated"
+              class="accept-btn"
               :loading="acceptingId === item.id"
               @click="accept(item)"
+              prepend-icon="mdi-check"
             >
               Accept
             </v-btn>
@@ -103,18 +143,21 @@
               v-else
               variant="outlined"
               size="small"
-              class="btn-outline"
+              class="view-btn"
               @click="viewDetails(item)"
+              prepend-icon="mdi-eye-outline"
             >
-              View details
+              View Details
             </v-btn>
           </div>
         </template>
 
         <template #no-data>
-          <v-alert type="info" variant="tonal" title="No tickets to show">
-            Try changing filters.
-          </v-alert>
+          <div class="no-data-state">
+            <v-icon size="64" color="grey lighten-2">mdi-ticket-outline</v-icon>
+            <h3 class="mt-4 mb-2">No tickets found</h3>
+            <p class="text-medium-emphasis">Try adjusting your filters or check back later.</p>
+          </div>
         </template>
       </v-data-table>
     </v-card>
@@ -265,9 +308,37 @@ export default {
     this.$router.push({ name: 'OperatorTicketDetails', params: { id: item.id } });
   }
 },
-    formatDate(d) {
-      if (!d) return '—';
-      try { return new Date(d).toLocaleString(); } catch { return String(d); }
+    getStatusIcon(item) {
+      const status = this.getStatusCode(item)?.toLowerCase();
+      switch(status) {
+        case 'open': return 'mdi-ticket-outline';
+        case 'new': return 'mdi-new-box';
+        case 'in_progress': return 'mdi-progress-clock';
+        case 'resolved': return 'mdi-check-circle-outline';
+        case 'closed': return 'mdi-lock-outline';
+        default: return 'mdi-help-circle-outline';
+      }
+    },
+    getPriorityIcon(priority) {
+      if (!priority) return 'mdi-flag-outline';
+      const p = String(priority).toLowerCase();
+      switch(p) {
+        case 'critical': return 'mdi-fire';
+        case 'high': return 'mdi-flag';
+        case 'medium': return 'mdi-flag-outline';
+        case 'low': return 'mdi-flag-variant-outline';
+        default: return 'mdi-flag-outline';
+      }
+    },
+    getCategoryColor(category) {
+      if (!category) return 'default';
+      const colors = {
+        'technical': 'primary',
+        'billing': 'warning',
+        'general': 'info',
+        'complaint': 'error'
+      };
+      return colors[category.toLowerCase()] || 'default';
     },
     priorityColor(p) {
       if (!p) return undefined;
@@ -278,30 +349,355 @@ export default {
       if (k === 'low') return 'green';
       return undefined;
     },
+    formatDate(d) {
+      if (!d) return '—';
+      try { return new Date(d).toLocaleString(); } catch { return String(d); }
+    },
   },
 };
 </script>
 
 
-<style scoped>
+<style scoped lang="scss">
+.operator-tickets-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, 
+    rgba(244, 244, 245, 0.95) 0%, 
+    rgba(255, 251, 235, 0.95) 100%);
+}
+
 .tickets-header {
+  margin-bottom: 2rem;
+  animation: slideInDown 0.7s ease-out;
+
+  .header-content {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.5rem;
+
+    .page-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--warm-brown);
+      margin: 0;
+      background: linear-gradient(135deg, #8B4513, #D2691E);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .page-subtitle {
+      color: var(--warm-text);
+      margin: 0;
+      font-size: 1rem;
+      opacity: 0.8;
+    }
+  }
+
+  .filters-section {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+    }
+
+    .filter-item {
+      min-width: 200px;
+      flex: 1;
+      max-width: 250px;
+
+      @media (max-width: 768px) {
+        min-width: 100%;
+        max-width: 100%;
+      }
+
+      :deep(.v-field) {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 12px;
+        transition: all 0.3s ease;
+
+        &:hover {
+          background: rgba(255, 255, 255, 1);
+          
+          box-shadow: 0 4px 12px rgba(212, 115, 10, 0.15);
+        }
+      }
+
+      :deep(.v-field--focused) {
+        box-shadow: 0 0 0 2px rgba(212, 115, 10, 0.2);
+      }
+    }
+  }
+}
+
+.tickets-table-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  border: 1px solid rgba(212, 115, 10, 0.1);
+  overflow: hidden;
+  animation: slideInUp 0.8s ease-out;
+
+  :deep(.v-data-table) {
+    background: transparent;
+
+    .v-data-table__thead {
+      background: linear-gradient(135deg, 
+        rgba(212, 115, 10, 0.1) 0%, 
+        rgba(245, 158, 11, 0.05) 100%);
+
+      th {
+        color: var(--warm-brown) !important;
+        font-weight: 600;
+        font-size: 0.875rem;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        border-bottom: 2px solid rgba(212, 115, 10, 0.2);
+        padding: 16px 12px;
+      }
+    }
+
+    .v-data-table__tbody {
+      tr {
+        transition: all 0.3s ease;
+
+        &:hover {
+          background: rgba(212, 115, 10, 0.05);
+          
+          box-shadow: 0 2px 8px rgba(212, 115, 10, 0.1);
+        }
+
+        td {
+          padding: 16px 12px;
+          border-bottom: 1px solid rgba(212, 115, 10, 0.1);
+        }
+      }
+    }
+  }
+}
+
+.subject-cell {
+  .subject-title {
+    font-weight: 600;
+    color: var(--warm-brown);
+    margin-bottom: 4px;
+    font-size: 0.95rem;
+  }
+
+  .subject-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: var(--warm-text);
+    opacity: 0.7;
+
+    .ticket-id {
+      background: linear-gradient(135deg, 
+        rgba(212, 115, 10, 0.1), 
+        rgba(245, 158, 11, 0.1));
+      color: var(--warm-orange);
+      font-weight: 600;
+    }
+
+    .meta-separator {
+      color: rgba(212, 115, 10, 0.4);
+    }
+
+    .created-date {
+      font-size: 0.75rem;
+    }
+  }
+}
+
+.category-chip {
+  font-weight: 500;
+  border-radius: 8px;
+  
+  &.v-chip--variant-tonal {
+    background: rgba(212, 115, 10, 0.1) !important;
+    color: var(--warm-orange) !important;
+  }
+}
+
+.priority-chip {
+  font-weight: 600;
+  border-radius: 8px;
+  
+  .v-icon {
+    margin-right: 4px;
+  }
+}
+
+.status-chip {
+  font-weight: 500;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+
+  &.status-open {
+    border-color: #10B981;
+    color: #10B981;
+    background: rgba(16, 185, 129, 0.1);
+  }
+
+  &.status-in_progress {
+    border-color: #F59E0B;
+    color: #F59E0B;
+    background: rgba(245, 158, 11, 0.1);
+  }
+
+  &.status-resolved {
+    border-color: #6366F1;
+    color: #6366F1;
+    background: rgba(99, 102, 241, 0.1);
+  }
+
+  &.status-closed {
+    border-color: #6B7280;
+    color: #6B7280;
+    background: rgba(107, 114, 128, 0.1);
+  }
+
+  .v-icon {
+    margin-right: 4px;
+  }
+}
+
+.assignee-cell {
   display: flex;
   align-items: center;
-  margin-bottom: 12px;
-}
-.page-title { margin: 0; font-size: 1.4rem; font-weight: 800; }
-.filters { display: flex; gap: 8px; }
-.filter-item { min-width: 180px; }
 
-.operator-table :deep(thead th) { font-weight: 700; }
-.cell-title .subject { font-weight: 700; }
-.cell-title .meta {
-  font-size: 0.8rem; color: rgba(0,0,0,0.54); display: flex; gap: 6px;
+  .assignee-name {
+    font-weight: 500;
+    color: var(--warm-brown);
+  }
+
+  .unassigned-text {
+    color: var(--warm-text);
+    opacity: 0.6;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+
+    .v-icon {
+      opacity: 0.5;
+    }
+  }
 }
-.row-actions { display: flex; justify-content: flex-end; gap: 8px; }
-.btn-outline {
-  text-transform: none;
-  border-radius: 10px !important;
-  border: 1.5px solid rgba(0,0,0,0.38) !important;
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+
+  .accept-btn {
+    background: linear-gradient(135deg, #D4730A, #F59E0B);
+    color: white;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+
+    &:hover {
+      
+      box-shadow: 0 4px 12px rgba(212, 115, 10, 0.3);
+    }
+
+    .v-icon {
+      margin-right: 4px;
+    }
+  }
+
+  .view-btn {
+    border: 2px solid rgba(212, 115, 10, 0.3);
+    color: var(--warm-orange);
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: rgba(212, 115, 10, 0.1);
+      border-color: var(--warm-orange);
+      
+    }
+
+    .v-icon {
+      margin-right: 4px;
+    }
+  }
+}
+
+.no-data-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--warm-text);
+
+  h3 {
+    color: var(--warm-brown);
+    font-weight: 600;
+  }
+
+  .v-icon {
+    opacity: 0.3;
+  }
+}
+
+// Animation keyframes
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    /* transform: translateY(...) uklonjeno za bolje UX */
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .operator-tickets-container {
+    padding: 1rem;
+  }
+
+  .tickets-header {
+    .header-content {
+      .page-title {
+        font-size: 1.5rem;
+      }
+    }
+  }
+
+  .row-actions {
+    flex-direction: column;
+    gap: 4px;
+
+    .accept-btn,
+    .view-btn {
+      width: 100%;
+      min-width: auto;
+    }
+  }
 }
 </style>

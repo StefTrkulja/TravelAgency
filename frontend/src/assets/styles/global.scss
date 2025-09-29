@@ -1,0 +1,549 @@
+// === GLOBALNI TOPLIJI STILOVI ===
+
+// Import Google Fonts za elegantniji izgled
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+// === ROOT VARIABLES ===
+:root {
+  // Toplije boje
+  --warm-orange: #D4730A;
+  --warm-amber: #F59E0B;
+  --warm-red: #DC2626;
+  --warm-yellow: #EAB308;
+  --warm-brown: #92400E;
+  --cream: #FEF3C7;
+  --light-orange: #FED7AA;
+  --soft-orange: #FFEDD5;
+  --warm-bg: #FFFBF5;
+  --warm-surface: #FEF7ED;
+  --warm-text: #1C1917;
+  
+  // Gradijenti
+  --warm-gradient: linear-gradient(135deg, #F59E0B 0%, #D4730A 50%, #C2410C 100%);
+  --soft-gradient: linear-gradient(135deg, #FFEDD5 0%, #FED7AA 100%);
+  --sunset-gradient: linear-gradient(135deg, #FEF3C7 0%, #F59E0B 100%);
+  
+  // Senke
+  --warm-shadow-sm: 0 2px 8px rgba(212, 115, 10, 0.1);
+  --warm-shadow-md: 0 4px 16px rgba(212, 115, 10, 0.15);
+  --warm-shadow-lg: 0 8px 32px rgba(212, 115, 10, 0.2);
+  --warm-glow: 0 0 20px rgba(245, 158, 11, 0.3);
+  
+  // Border radius
+  --border-radius-sm: 8px;
+  --border-radius-md: 12px;
+  --border-radius-lg: 16px;
+  --border-radius-xl: 24px;
+}
+
+// === FONT FAMILIES ===
+* {
+  font-family: 'Inter', 'Roboto', sans-serif !important;
+}
+
+.font-heading {
+  font-family: 'Poppins', 'Inter', sans-serif !important;
+}
+
+// === GLOBALNI STILOVI ZA APLIKACIJU ===
+html, body {
+  background: var(--warm-bg) !important;
+  color: var(--warm-text) !important;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--warm-orange) var(--soft-orange);
+}
+
+body::-webkit-scrollbar {
+  width: 8px;
+}
+
+body::-webkit-scrollbar-track {
+  background: var(--soft-orange);
+  border-radius: 10px;
+}
+
+body::-webkit-scrollbar-thumb {
+  background: var(--warm-orange);
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+body::-webkit-scrollbar-thumb:hover {
+  background: var(--warm-amber);
+}
+
+// === VUETIFY KOMPONENTE OVERRIDE ===
+
+// App Bar topliji izgled
+.v-app-bar {
+  background: var(--warm-gradient) !important;
+  box-shadow: var(--warm-shadow-md) !important;
+  backdrop-filter: blur(12px);
+  
+  .v-toolbar-title {
+    font-family: 'Poppins', sans-serif !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.5px !important;
+  }
+}
+
+// Kartice sa toplijim stilovima
+.v-card {
+  border-radius: var(--border-radius-md) !important;
+  box-shadow: var(--warm-shadow-sm) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(245, 158, 11, 0.1) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  
+  &:hover {
+    box-shadow: var(--warm-shadow-md) !important;
+    
+    border-color: rgba(245, 158, 11, 0.2) !important;
+  }
+}
+
+// Dugmad sa toplijim stilovima
+.v-btn {
+  border-radius: var(--border-radius-sm) !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.3px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  
+  &.v-btn--variant-elevated {
+    box-shadow: var(--warm-shadow-sm) !important;
+    
+    &:hover {
+      box-shadow: var(--warm-shadow-md) !important;
+      
+    }
+  }
+  
+  &.v-btn--variant-outlined {
+    border-width: 1.5px !important;
+    border-color: rgba(212, 115, 10, 0.6) !important;
+    color: var(--warm-orange) !important;
+    
+    &:hover {
+      background: rgba(212, 115, 10, 0.05) !important;
+      border-color: var(--warm-orange) !important;
+      
+    }
+  }
+}
+
+// Input polja sa toplijim stilovima
+.v-field {
+  border-radius: var(--border-radius-sm) !important;
+  
+  &.v-field--variant-outlined {
+    .v-field__outline {
+      color: rgba(212, 115, 10, 0.3) !important;
+    }
+    
+    &.v-field--focused .v-field__outline {
+      color: var(--warm-orange) !important;
+    }
+  }
+  
+  .v-field__input {
+    color: var(--warm-text) !important;
+  }
+}
+
+// Select i autocomplete
+.v-select, .v-autocomplete {
+  .v-field__input {
+    color: var(--warm-text) !important;
+  }
+}
+
+// Tekstovi i naslovni
+.page-title, .headline, .v-card-title {
+  font-family: 'Poppins', sans-serif !important;
+  font-weight: 700 !important;
+  color: var(--warm-brown) !important;
+  letter-spacing: 0.5px !important;
+}
+
+// Progress indikatori
+.v-progress-linear {
+  border-radius: 10px !important;
+  overflow: hidden;
+  background: var(--light-orange) !important;
+  
+  .v-progress-linear__background {
+    background: rgba(245, 158, 11, 0.1) !important;
+  }
+  
+  .v-progress-linear__determinate {
+    background: var(--warm-gradient) !important;
+  }
+  
+  &.v-progress-linear--indeterminate {
+    .v-progress-linear__indeterminate {
+      .long {
+        background: linear-gradient(90deg, 
+          transparent, 
+          var(--warm-orange) 50%, 
+          var(--warm-amber), 
+          transparent) !important;
+        animation: indeterminate-ltr 2s infinite linear;
+      }
+      
+      .short {
+        background: linear-gradient(90deg, 
+          transparent, 
+          var(--warm-amber) 50%, 
+          var(--warm-orange), 
+          transparent) !important;
+        animation: indeterminate-ltr 2s infinite linear;
+        animation-delay: 0.5s;
+      }
+    }
+  }
+}
+
+@keyframes indeterminate-ltr {
+  0% {
+    left: -35%;
+    right: 100%;
+  }
+  60% {
+    left: 100%;
+    right: -90%;
+  }
+  100% {
+    left: 100%;
+    right: -90%;
+  }
+}
+
+// Alertovi
+.v-alert {
+  border-radius: var(--border-radius-md) !important;
+  border-left: 4px solid var(--warm-orange) !important;
+  
+  &.v-alert--variant-tonal {
+    background: rgba(245, 158, 11, 0.08) !important;
+    border-color: var(--warm-amber) !important;
+  }
+  
+  &.v-alert--type-error {
+    background: rgba(220, 38, 38, 0.08) !important;
+    border-color: var(--warm-red) !important;
+  }
+  
+  &.v-alert--type-success {
+    background: rgba(22, 163, 74, 0.08) !important;
+    border-color: #16A34A !important;
+  }
+}
+
+// Dialozi
+.v-dialog {
+  .v-card {
+    background: var(--warm-surface) !important;
+    
+    .v-toolbar {
+      background: var(--warm-gradient) !important;
+      
+      .v-toolbar-title {
+        color: white !important;
+        font-weight: 700 !important;
+      }
+      
+      .v-btn {
+        color: white !important;
+      }
+    }
+  }
+}
+
+// Menu
+.v-menu .v-list {
+  background: var(--warm-surface) !important;
+  border-radius: var(--border-radius-md) !important;
+  box-shadow: var(--warm-shadow-lg) !important;
+  border: 1px solid rgba(245, 158, 11, 0.1) !important;
+  
+  .v-list-item {
+    border-radius: var(--border-radius-sm) !important;
+    margin: 2px 4px !important;
+    transition: all 0.2s ease !important;
+    
+    &:hover {
+      background: rgba(245, 158, 11, 0.1) !important;
+    }
+  }
+}
+
+// Tabele
+.v-table {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-radius: var(--border-radius-md) !important;
+  overflow: hidden;
+  
+  .v-table__wrapper {
+    border-radius: var(--border-radius-md) !important;
+  }
+  
+  th {
+    background: var(--soft-orange) !important;
+    color: var(--warm-brown) !important;
+    font-weight: 600 !important;
+  }
+  
+  tbody tr:hover {
+    background: rgba(245, 158, 11, 0.05) !important;
+  }
+}
+
+// Chips/Pills
+.pill, .v-chip {
+  background: var(--light-orange) !important;
+  color: var(--warm-brown) !important;
+  border: 1px solid rgba(212, 115, 10, 0.3) !important;
+  border-radius: 20px !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+  
+  &:hover {
+    background: var(--warm-amber) !important;
+    color: white !important;
+    // transform: scale(1.05); - uklonjeno za bolje UX
+  }
+}
+
+// Animacije
+@keyframes warmGlow {
+  0%, 100% { box-shadow: var(--warm-shadow-sm); }
+  50% { box-shadow: var(--warm-glow); }
+}
+
+@keyframes gentleBounce {
+  0%, 100% { transform: translateY(0); }
+  50% {  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Hover animacije uklonjene za bolje korisničko iskustvo
+
+// Loading animacija
+.v-progress-linear.v-progress-linear--indeterminate {
+  .v-progress-linear__indeterminate {
+    .long, .short {
+      background: var(--warm-gradient) !important;
+    }
+  }
+}
+
+// Container-i sa boljim spacing-om
+.v-container {
+  max-width: 1400px !important;
+  
+  &.py-6 {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border-radius: var(--border-radius-lg) !important;
+    backdrop-filter: blur(10px);
+  }
+}
+
+// Responsivnost
+@media (max-width: 960px) {
+  .v-card {
+    margin: 8px 4px !important;
+  }
+  
+  .page-title {
+    font-size: 1.4rem !important;
+  }
+  
+  .v-btn {
+    min-width: auto !important;
+    padding: 0 12px !important;
+  }
+}
+
+// Focus stanja
+.v-btn:focus-visible, .v-field--focused {
+  outline: 2px solid var(--warm-amber) !important;
+  outline-offset: 2px !important;
+}
+
+// Custom utility klase
+.warm-gradient {
+  background: var(--warm-gradient) !important;
+}
+
+.soft-gradient {
+  background: var(--soft-gradient) !important;
+}
+
+.warm-shadow {
+  box-shadow: var(--warm-shadow-md) !important;
+}
+
+.warm-glow {
+  box-shadow: var(--warm-glow) !important;
+}
+
+.animate-fade-in {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+// Text utility klase
+.text-warm-brown {
+  color: var(--warm-brown) !important;
+}
+
+.text-warm-orange {
+  color: var(--warm-orange) !important;
+}
+
+.bg-warm-surface {
+  background: var(--warm-surface) !important;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes warmPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+// Shimmer efekat za loading dugmad
+.v-btn--loading {
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    background-size: 200px 100%;
+    animation: shimmer 1.5s infinite linear;
+    z-index: 1;
+  }
+  
+  .v-btn__content {
+    position: relative;
+    z-index: 2;
+  }
+}
+
+// Hover efekti za različite elemente - uklonjeni za bolje UX
+
+// Fokus animacije - uklonjene beskonačne animacije
+.v-btn:focus-visible {
+  // animation: warmPulse 1s infinite; - uklonjeno za bolje UX
+  outline: 2px solid var(--warm-amber) !important;
+  outline-offset: 2px !important;
+}
+
+// Tooltip stilovi
+.v-tooltip {
+  :deep(.v-overlay__content) {
+    background: var(--warm-brown) !important;
+    border-radius: var(--border-radius-sm) !important;
+    box-shadow: var(--warm-shadow-md) !important;
+    border: 1px solid rgba(245, 158, 11, 0.2) !important;
+    color: white !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.3px !important;
+    backdrop-filter: blur(10px) !important;
+  }
+}
+
+// Snackbar stilovi
+.v-snackbar {
+  :deep(.v-snackbar__wrapper) {
+    border-radius: var(--border-radius-md) !important;
+    box-shadow: var(--warm-shadow-lg) !important;
+    backdrop-filter: blur(20px) !important;
+  }
+  
+  &.v-snackbar--variant-success {
+    :deep(.v-snackbar__wrapper) {
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+    }
+  }
+  
+  &.v-snackbar--variant-error {
+    :deep(.v-snackbar__wrapper) {
+      background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important;
+    }
+  }
+  
+  &.v-snackbar--variant-warning {
+    :deep(.v-snackbar__wrapper) {
+      background: var(--warm-gradient) !important;
+    }
+  }
+}
+
+// Stagger animacije za kartice
+.tickets-grid .v-col:nth-child(1) .ticket-card { animation-delay: 0s; }
+.tickets-grid .v-col:nth-child(2) .ticket-card { animation-delay: 0.1s; }
+.tickets-grid .v-col:nth-child(3) .ticket-card { animation-delay: 0.2s; }
+.tickets-grid .v-col:nth-child(4) .ticket-card { animation-delay: 0.3s; }
+.tickets-grid .v-col:nth-child(5) .ticket-card { animation-delay: 0.4s; }
+.tickets-grid .v-col:nth-child(6) .ticket-card { animation-delay: 0.5s; }
+
+.bg-soft-orange {
+  background: var(--soft-orange) !important;
+}

@@ -11,6 +11,9 @@ import { registerPlugins } from '@/plugins'
 import App from './App.vue'
 import router from './router'
 
+// Global styles
+import '@/assets/styles/global.scss'
+
 // Composables
 import { createApp } from 'vue'
 

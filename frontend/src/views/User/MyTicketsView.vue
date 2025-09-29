@@ -1,11 +1,11 @@
 <template>
-  <v-container class="py-6">
+  <v-container class="py-6 tickets-container">
     <!-- Header -->
-    <div class="tickets-header">
-      <h1 class="page-title">My Tickets</h1>
+    <div class="tickets-header animate-fade-in">
+      <h1 class="page-title font-heading">My Support Tickets</h1>
       <v-btn
         variant="outlined"
-        class="btn-outline"
+        class="btn-outline create-ticket-btn"
         prepend-icon="mdi-plus"
         @click="createNew"
       >
@@ -14,21 +14,30 @@
     </div>
 
     <!-- Loading / Empty states -->
-    <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-4" />
+    <v-progress-linear 
+      v-if="loading" 
+      indeterminate 
+      color="primary" 
+      class="mb-4 loading-bar" 
+    />
     <v-alert
       v-else-if="tickets.length === 0"
       type="info"
       variant="tonal"
-      class="mt-6"
+      class="mt-6 empty-state"
       title="No tickets yet"
       text="Click New Ticket to create your first support request."
-    />
+    >
+      <template #prepend>
+        <v-icon size="40">mdi-ticket-outline</v-icon>
+      </template>
+    </v-alert>
 
     <!-- Grid -->
-    <v-row v-else dense>
-      <v-col v-for="t in tickets" :key="t.id" cols="12" sm="6" md="4">
-        <v-card class="ticket-card" elevation="1">
-          <v-card-text>
+    <v-row v-else dense class="tickets-grid">
+      <v-col v-for="(t, index) in tickets" :key="t.id" cols="12" sm="6" md="4">
+        <v-card class="ticket-card animate-fade-in" elevation="0" :style="{ animationDelay: `${index * 0.1}s` }">
+          <v-card-text class="pa-6">
             <div class="ticket-title">{{ t.subject }}</div>
 
             <div class="kv">
@@ -38,14 +47,28 @@
 
             <div class="kv">
               <span class="kv-label">Status:</span>
-              <span class="pill">{{ t.status.name }}</span>
+              <span class="pill status-pill" :class="`status-${t.status.name.toLowerCase()}`">
+                {{ t.status.name }}
+              </span>
             </div>
 
             <div class="actions-centered">
-              <v-btn v-if="isClosed(t.status)" variant="outlined" class="btn-outline" @click="rate(t)">
-                Rate Our Service
+              <v-btn 
+                v-if="isClosed(t.status)" 
+                variant="outlined" 
+                class="btn-outline rate-btn" 
+                @click="rate(t)"
+                prepend-icon="mdi-star-outline"
+              >
+                Rate Service
               </v-btn>
-              <v-btn v-else variant="outlined" class="btn-outline" @click="viewDetails(t)">
+              <v-btn 
+                v-else 
+                variant="outlined" 
+                class="btn-outline view-btn" 
+                @click="viewDetails(t)"
+                prepend-icon="mdi-eye-outline"
+              >
                 View Details
               </v-btn>
             </div>
@@ -532,6 +555,101 @@ export default {
 </script>
 
 <style scoped>
+/* Container */
+.tickets-container {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--border-radius-xl);
+  backdrop-filter: blur(10px);
+  min-height: calc(100vh - 120px);
+}
+
+/* Create ticket button */
+.create-ticket-btn {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  color: var(--warm-brown) !important;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+  }
+}
+
+/* Loading */
+.loading-bar {
+  border-radius: 10px !important;
+  overflow: hidden;
+  box-shadow: var(--warm-shadow-sm);
+}
+
+/* Empty state */
+.empty-state {
+  border-radius: var(--border-radius-lg) !important;
+  background: rgba(245, 158, 11, 0.05) !important;
+  border: 1px solid rgba(245, 158, 11, 0.2) !important;
+  box-shadow: var(--warm-shadow-sm);
+  
+  :deep(.v-alert__prepend) {
+    .v-icon {
+      color: var(--warm-orange) !important;
+    }
+  }
+}
+
+/* Tickets grid */
+.tickets-grid {
+  margin-top: 8px;
+}
+
+/* Status specific colors */
+.status-pill {
+  &.status-open {
+    background: linear-gradient(135deg, #3B82F6 0%, #1E40AF 100%) !important;
+    color: white !important;
+    border-color: #3B82F6 !important;
+  }
+  
+  &.status-in-progress, &.status-pending {
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%) !important;
+    color: white !important;
+    border-color: #F59E0B !important;
+  }
+  
+  &.status-closed {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+    color: white !important;
+    border-color: #10B981 !important;
+  }
+  
+  &.status-escalated {
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important;
+    color: white !important;
+    border-color: #EF4444 !important;
+  }
+}
+
+/* Action buttons specific styling */
+.rate-btn {
+  border-color: #10B981 !important;
+  color: #10B981 !important;
+  
+  &:hover {
+    background: #10B981 !important;
+    color: white !important;
+  }
+}
+
+.view-btn {
+  border-color: #3B82F6 !important;
+  color: #3B82F6 !important;
+  
+  &:hover {
+    background: #3B82F6 !important;
+    color: white !important;
+  }
+}
+
 /* poravnavanje visine i veće dugme */
 .subject-row { align-items: stretch; }
 .subject-field :deep(.v-field) { height: 56px; } /* standardna visina inputa */
@@ -547,60 +665,341 @@ export default {
 .tickets-header {
   display: flex;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 32px;
+  padding: 24px;
+  background: var(--soft-gradient);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--warm-shadow-sm);
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g fill="rgba(212,115,10,0.03)"><circle cx="20" cy="20" r="2"/></g></svg>') repeat;
+    opacity: 0.5;
+  }
 }
+
 .page-title {
   margin: 0;
-  font-size: 1.6rem;
+  font-size: 2rem;
   font-weight: 800;
+  color: var(--warm-brown);
+  letter-spacing: 0.5px;
+  position: relative;
+  z-index: 1;
 }
+
 .tickets-header .v-btn {
   margin-left: auto;
+  position: relative;
+  z-index: 1;
+  border-radius: var(--border-radius-md) !important;
+  padding: 0 24px !important;
+  height: 48px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  
+  &:hover {
+    
+    box-shadow: var(--warm-shadow-md) !important;
+  }
 }
 
 /* Card */
-.ticket-card { border-radius: 12px; }
-.ticket-title { font-weight: 700; margin-bottom: 12px; }
+.ticket-card { 
+  border-radius: var(--border-radius-lg) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(245, 158, 11, 0.1) !important;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: var(--warm-gradient);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+  }
+  
+  &:hover {
+    /* transform: translateY(...) uklonjeno za bolje UX */
+    box-shadow: var(--warm-shadow-lg) !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+    
+    &::before {
+      transform: scaleX(1);
+    }
+  }
+}
+
+.ticket-title { 
+  font-weight: 700; 
+  margin-bottom: 16px; 
+  font-size: 1.1rem;
+  color: var(--warm-brown);
+  line-height: 1.4;
+}
 
 /* Type & Status */
-.kv { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
-.kv-label { font-weight: 600; }
+.kv { 
+  display: flex; 
+  align-items: center; 
+  gap: 12px; 
+  margin: 10px 0; 
+}
+
+.kv-label { 
+  font-weight: 600; 
+  color: var(--warm-text);
+  font-size: 0.9rem;
+  min-width: 60px;
+}
+
 .pill {
-  display: inline-flex; align-items: center;
-  padding: 4px 10px; border: 1.5px solid #cfcfcf;
-  border-radius: 9999px; font-size: 0.85rem; background: #fafafa; white-space: nowrap;
+  display: inline-flex; 
+  align-items: center;
+  padding: 6px 14px; 
+  border: 1.5px solid rgba(245, 158, 11, 0.4);
+  border-radius: 20px; 
+  font-size: 0.85rem; 
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--light-orange) 0%, rgba(245, 158, 11, 0.1) 100%);
+  color: var(--warm-brown);
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.3s ease;
+  }
+  
+  &:hover {
+    background: var(--warm-gradient);
+    color: white;
+    border-color: var(--warm-orange);
+    /* transform: scale(1.05); - uklonjeno za bolje UX */
+    
+    &::before {
+      left: 100%;
+    }
+  }
 }
 
 /* Centered buttons on cards */
-.actions-centered { display: flex; justify-content: center; margin-top: 16px; }
+.actions-centered { 
+  display: flex; 
+  justify-content: center; 
+  margin-top: 20px; 
+  padding-top: 16px;
+  border-top: 1px solid rgba(245, 158, 11, 0.1);
+}
+
 .btn-outline {
-  border-radius: 10px !important;
-  border: 1.5px solid rgba(0,0,0,0.38) !important;
-  text-transform: none; font-weight: 600;
+  border-radius: var(--border-radius-md) !important;
+  border: 2px solid var(--warm-orange) !important;
+  color: var(--warm-orange) !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.3px !important;
+  padding: 0 20px !important;
+  height: 40px !important;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: var(--warm-gradient);
+    transition: left 0.3s ease;
+    z-index: 0;
+  }
+  
+  .v-btn__content {
+    position: relative;
+    z-index: 1;
+    transition: color 0.3s ease;
+  }
+  
+  &:hover {
+    color: white !important;
+    border-color: var(--warm-orange) !important;
+    
+    box-shadow: var(--warm-shadow-md) !important;
+    
+    &::before {
+      left: 0;
+    }
+  }
 }
 
 /* Step 2: attachments carousel */
 .attachments-frame {
-  display: grid; grid-template-columns: auto 1fr auto; align-items: center;
-  border: 2px solid #c9c9c9; border-radius: 8px; padding: 10px; gap: 8px;
+  display: grid; 
+  grid-template-columns: auto 1fr auto; 
+  align-items: center;
+  border: 2px solid rgba(245, 158, 11, 0.3); 
+  border-radius: var(--border-radius-lg); 
+  padding: 16px; 
+  gap: 12px;
+  background: var(--soft-orange);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--warm-shadow-sm);
 }
-.nav-arrow { align-self: center; }
+
+.nav-arrow { 
+  align-self: center;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  color: var(--warm-orange) !important;
+  transition: all 0.2s ease !important;
+  
+  &:hover {
+    background: white !important;
+    /* transform: scale(1.1); - uklonjeno za bolje UX */
+    box-shadow: var(--warm-shadow-sm) !important;
+  }
+}
+
 .attachments-strip {
-  display: flex; gap: 16px; overflow-x: auto; scroll-behavior: smooth; padding: 6px 4px;
+  display: flex; 
+  gap: 20px; 
+  overflow-x: auto; 
+  scroll-behavior: smooth; 
+  padding: 8px 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--warm-orange) var(--light-orange);
+  
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: var(--light-orange);
+    border-radius: 10px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: var(--warm-orange);
+    border-radius: 10px;
+  }
 }
+
 .att-card {
-  min-width: 180px; max-width: 180px;
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  min-width: 200px; 
+  max-width: 200px;
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 12px;
+  border-radius: var(--border-radius-md);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    
+    box-shadow: var(--warm-shadow-md);
+    background: white;
+  }
 }
+
 .thumb {
-  width: 160px; height: 120px; border: 2px solid #c9c9c9; border-radius: 8px; position: relative;
-  display: flex; align-items: center; justify-content: center; overflow: hidden; background: #fafafa;
+  width: 176px; 
+  height: 132px; 
+  border: 2px solid rgba(245, 158, 11, 0.3); 
+  border-radius: var(--border-radius-sm); 
+  position: relative;
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  overflow: hidden; 
+  background: var(--warm-surface);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    border-color: var(--warm-orange);
+    box-shadow: var(--warm-shadow-sm);
+  }
 }
-.thumb img { max-width: 100%; max-height: 100%; object-fit: cover; }
-.doc-icon { display:flex; align-items:center; justify-content:center; width:100%; height:100%; }
+
+.thumb img { 
+  max-width: 100%; 
+  max-height: 100%; 
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+/* .att-card:hover .thumb img { transform: scale(1.05); } - uklonjeno za bolje UX */
+
+.doc-icon { 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  width: 100%; 
+  height: 100%;
+  
+  .v-icon {
+    color: var(--warm-orange) !important;
+    opacity: 0.7;
+    transition: all 0.3s ease;
+  }
+}
+
+.att-card:hover .doc-icon .v-icon {
+  opacity: 1;
+  /* transform: scale(1.1); - uklonjeno za bolje UX */
+}
+
 .remove-dot {
-  position: absolute; top: 4px; right: 4px; background: #fff;
-  border: 1px solid rgba(0,0,0,0.25);
+  position: absolute; 
+  top: 6px; 
+  right: 6px; 
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(220, 38, 38, 0.3) !important;
+  color: var(--warm-red) !important;
+  transition: all 0.2s ease !important;
+  
+  &:hover {
+    background: var(--warm-red) !important;
+    color: white !important;
+    /* transform: scale(1.1); - uklonjeno za bolje UX */
+  }
 }
-.att-name { font-size: 0.85rem; text-align: center; max-width: 160px; }
+
+.att-name { 
+  font-size: 0.85rem; 
+  text-align: center; 
+  max-width: 176px;
+  font-weight: 500;
+  color: var(--warm-text);
+  line-height: 1.3;
+}
 </style>
