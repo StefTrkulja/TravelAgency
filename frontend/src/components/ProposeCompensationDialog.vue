@@ -233,10 +233,18 @@ export default {
       this.$emit('update:modelValue', false)
     },
     submit() {
-      this.$emit('submit', {
+      // Create payload and filter out validUntil for REFUND type
+      const payload = {
         caseId: this.ticket?.id,
         ...this.form
-      })
+      }
+      
+      // Remove validUntil for REFUND type or if it's empty
+      if (this.form.type === 'REFUND' || !this.form.validUntil) {
+        delete payload.validUntil
+      }
+      
+      this.$emit('submit', payload)
       this.close()
     }
   }

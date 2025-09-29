@@ -48,9 +48,13 @@ router.post('/:id/propose', jwtParser.extractTokenUser, async (req, res) => {
 		type : req.body.type,
 		amount: req.body.value,
 		note: req.body.note,
-		validUntil: req.body.validUntil,
 		status : 'PROPOSED',
 		createdAt: new Date(),
+	}
+	
+	// Only add validUntil if it exists and is not empty (not needed for REFUND)
+	if (req.body.validUntil && req.body.validUntil.trim() !== '') {
+		compensation.validUntil = req.body.validUntil;
 	}
 	const result = await CompensationService.proposeCompensation(compensation);
 if (result.status === StatusEnum.FAIL) {

@@ -4,12 +4,25 @@
     <!-- Warm-themed Header -->
     <div class="page-header">
       <div class="header-content">
-        <div class="header-icon">
-          <v-icon size="32" color="white">mdi-ticket-confirmation</v-icon>
+        <div class="header-navigation">
+          <v-btn
+            variant="outlined"
+            size="small"
+            class="back-btn"
+            @click="goBack"
+            prepend-icon="mdi-arrow-left"
+          >
+            Back to Tickets
+          </v-btn>
         </div>
-        <div class="header-text">
-          <h1 class="page-title">Ticket Details</h1>
-          <p class="page-subtitle">Case #{{ ticket.id || 'Loading...' }}</p>
+        <div class="header-main">
+          <div class="header-icon">
+            <v-icon size="32" color="white">mdi-ticket-confirmation</v-icon>
+          </div>
+          <div class="header-text">
+            <h1 class="page-title">Ticket Details</h1>
+            <p class="page-subtitle">Case #{{ ticket.id || 'Loading...' }}</p>
+          </div>
         </div>
       </div>
     </div>
@@ -521,6 +534,16 @@ export default {
     },
   },
   methods: {
+    // ========= Navigation =========
+    goBack() {
+      // Try to go back in history first, otherwise navigate to manager tickets
+      if (window.history.length > 1) {
+        this.$router.back()
+      } else {
+        this.$router.push({ name: 'ManagerTicketsView' })
+      }
+    },
+
     // ========= helpers =========
     toAbsoluteUrl(storageKey = '') {
       if (!storageKey) return null
@@ -910,8 +933,40 @@ export default {
 
   .header-content {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 16px;
+
+    .header-navigation {
+      display: flex;
+      justify-content: flex-start;
+      
+      .back-btn {
+        background: rgba(255, 255, 255, 0.1) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        color: white !important;
+        backdrop-filter: blur(10px);
+        border-radius: 8px !important;
+        text-transform: none !important;
+        font-weight: 500 !important;
+        transition: all 0.3s ease !important;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.2) !important;
+          border-color: rgba(255, 255, 255, 0.5) !important;
+          transform: translateX(-2px);
+        }
+
+        .v-icon {
+          color: white !important;
+        }
+      }
+    }
+
+    .header-main {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
 
     .header-icon {
       background: rgba(255, 255, 255, 0.2);
@@ -1456,6 +1511,19 @@ export default {
 
     .header-content {
       gap: 12px;
+
+      .header-navigation {
+        .back-btn {
+          font-size: 0.875rem !important;
+          height: 32px !important;
+          min-width: auto !important;
+          padding: 0 12px !important;
+        }
+      }
+
+      .header-main {
+        gap: 12px;
+      }
 
       .header-text .page-title {
         font-size: 1.6rem;

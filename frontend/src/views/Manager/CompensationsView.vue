@@ -776,6 +776,63 @@ export default {
     }
   }
 
+  .row-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    min-width: 220px;
+
+    .action-btn {
+      border-radius: 8px !important;
+      text-transform: none !important;
+      font-weight: 600 !important;
+      font-size: 0.75rem !important;
+      padding: 0 8px !important;
+      height: 28px !important;
+      min-width: 60px !important;
+      transition: all 0.3s ease !important;
+
+      &:hover {
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+        transform: translateY(-1px);
+      }
+
+      &.approve-btn {
+        background: var(--warm-gradient) !important;
+        color: white !important;
+        border: none !important;
+
+        &:hover {
+          background: linear-gradient(135deg, #B8860B, #DAA520) !important;
+        }
+      }
+
+      &.reject-btn {
+        color: #d32f2f !important;
+        border-color: #d32f2f !important;
+
+        &:hover {
+          background: rgba(211, 47, 47, 0.04) !important;
+          border-color: #b71c1c !important;
+          color: #b71c1c !important;
+        }
+      }
+
+      &.view-btn {
+        color: var(--warm-orange) !important;
+        border-color: var(--warm-orange) !important;
+
+        &:hover {
+          background: rgba(212, 115, 10, 0.04) !important;
+          border-color: var(--warm-dark) !important;
+          color: var(--warm-dark) !important;
+        }
+      }
+    }
+  }
+
   .actions-container {
     display: flex;
     gap: 8px;
@@ -1012,6 +1069,20 @@ export default {
           flex: 1;
         }
       }
+    }
+  }
+
+  .row-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    min-width: auto;
+
+    .action-btn {
+      min-width: 70px !important;
+      font-size: 0.75rem !important;
+      height: 26px !important;
+      padding: 0 6px !important;
     }
   }
 
