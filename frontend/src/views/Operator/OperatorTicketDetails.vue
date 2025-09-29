@@ -240,7 +240,11 @@
 
               <div v-if="viewMessages.length === 0" class="no-messages">
                 <v-icon size="48" color="grey lighten-2">mdi-message-outline</v-icon>
-                <p class="mt-2 text-medium-emphasis">No messages yet</p>
+                <p v-if="activeTab === 'customer'" class="mt-2 text-medium-emphasis">No messages yet</p>
+                <p v-else-if="activeTab === 'manager' && !escalationId" class="mt-2 text-medium-emphasis">
+                  This ticket hasn't been escalated yet. Escalate the ticket to communicate with the manager.
+                </p>
+                <p v-else class="mt-2 text-medium-emphasis">No internal messages yet</p>
               </div>
             </template>
           </div>
@@ -251,9 +255,9 @@
               density="comfortable" 
               variant="outlined" 
               hide-details
-              placeholder="Type your message..." 
+              :placeholder="activeTab === 'manager' && !escalationId ? 'Escalate ticket first to send messages' : 'Type your message...'" 
               class="composer-input" 
-              :disabled="sending" 
+              :disabled="sending || (activeTab === 'manager' && !escalationId)" 
               @keydown.enter.prevent="send"
             />
             <v-btn 
@@ -261,7 +265,7 @@
               variant="elevated"
               class="send-btn" 
               :loading="sending" 
-              :disabled="!draft?.trim()" 
+              :disabled="!draft?.trim() || (activeTab === 'manager' && !escalationId)" 
               @click="send"
             >
               <v-icon>mdi-send</v-icon>
@@ -381,6 +385,7 @@ export default {
       managerMessages: [],
       escalateDialog: false,
       escalating: false,
+      escalationId: null,  // dodano za čuvanje escalation ID
       // UI state
       activeTab: 'customer',
       draft: '',
@@ -418,6 +423,14 @@ export default {
     isInProgress() { return this.ticket.status === 'IN_PROGRESS' },
     isWaitingInfo() { return this.ticket.status === 'WAITING_INFO' },
     isTerminal() { return this.ticket.status === 'CLOSED' || this.ticket.status === 'REJECTED' },
+  },
+  watch: {
+    activeTab() {
+      // resetuj draft kada se promeni tab
+      this.draft = ''
+    }
+  },
+  methods: {
     isEscalated() { return this.ticket.status === 'ESCALATED' },
   },
   created() {
@@ -429,6 +442,7 @@ export default {
         this.fetchTicket(),
         this.fetchHistory(),
         this.fetchMessages(),
+        this.fetchManagerMessages(),
       ])
     },
 
@@ -650,6 +664,35 @@ export default {
       }
     },
 
+    // 3.1) Manager messages (escalation poruke)
+    async fetchManagerMessages() {
+      this.loading.messages = true
+      try {
+        const { data } = await axiosInstance.get(`/escalation/by-complaint/${this.complaintId}`)
+        
+        if (data.escalation && data.messages) {
+          // mapiramo escalation poruke na UI format
+          this.managerMessages = (data.messages || []).map(m => ({
+            sender: m.authorUsername || m.author || 'manager',
+            text: m.content || m.text || '',
+            time: m.createdAt || m.time,
+          }))
+          
+          // čuvamo escalation ID za slanje poruka
+          this.escalationId = data.escalation.id
+        } else {
+          this.managerMessages = []
+          this.escalationId = null
+        }
+      } catch (e) {
+        console.error('fetchManagerMessages failed:', e)
+        this.managerMessages = []
+        this.escalationId = null
+      } finally {
+        this.loading.messages = false
+      }
+    },
+
     // 4) Slanje poruke
     async send() {
       const text = (this.draft || '').trim()
@@ -661,13 +704,25 @@ export default {
         this.viewMessages.push(temp)
         this.draft = ''
 
-        // Ako ti je endpoint /complaint/mycomplaints/:id/messages — zameni ovde:
-        await axiosInstance.post(`/complaint/${this.complaintId}/messages`, { text })
+        if (this.activeTab === 'manager') {
+          // Slanje poruke manageru preko escalation sistema
+          if (this.escalationId) {
+            await axiosInstance.post(`/escalation/${this.escalationId}/messages`, { text })
+          } else {
+            throw new Error('No escalation found for this ticket')
+          }
+        } else {
+          // Slanje poruke customeru preko complaint sistema
+          await axiosInstance.post(`/complaint/${this.complaintId}/messages`, { text })
+        }
 
         // (opciono) refetch za tačan timestamp/ID
         // await this.fetchMessages()
+        // await this.fetchManagerMessages()
       } catch (e) {
         console.error('send failed:', e)
+        // ukloni optimistic message u slučaju greške
+        this.viewMessages.pop()
       } finally {
         this.sending = false
       }

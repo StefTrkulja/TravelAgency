@@ -470,6 +470,7 @@
 import axiosInstance from '@/utils/axiosInstance'
 import { defineComponent, h } from 'vue'
 import ProposeCompensationDialog from '@/components/ProposeCompensationDialog.vue'
+import { store } from '@/utils/store'
 
 export default {
   name: 'TicketDetails',
@@ -733,7 +734,7 @@ export default {
         const { data } = await axiosInstance.get(`/escalation/${escalationId}/messages`)
         this.internalMessages = data.map(m => ({
           ...m,
-          me: m.author === 'Manager' || m.authorUsername === this.ticket.assigneeUsername,
+          me: m.authorUsername === store.username,
         }))
       } catch { this.internalMessages = [] }
     },

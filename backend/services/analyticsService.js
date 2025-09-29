@@ -278,6 +278,70 @@ class AnalyticsService {
     }
   }
 
+  // Get tickets count per day for the given time range
+  async getTicketsPerDay(options = {}) {
+    try {
+      const { timeRange = '30d' } = options;
+      
+      // Calculate date range
+      const now = new Date();
+      let days, startDate;
+
+      switch (timeRange) {
+        case '7d':
+          days = 7;
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30d':
+          days = 30;
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case '90d':
+          days = 90;
+          startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          days = 30;
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      }
+
+      // Get tickets grouped by day
+      const ticketsPerDay = await Complaint.findAll({
+        attributes: [
+          [sequelize.fn('DATE', sequelize.col('createdAt')), 'date'],
+          [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+        ],
+        where: {
+          createdAt: {
+            [Op.gte]: startDate
+          }
+        },
+        group: [sequelize.fn('DATE', sequelize.col('createdAt'))],
+        order: [[sequelize.fn('DATE', sequelize.col('createdAt')), 'ASC']],
+        raw: true
+      });
+
+      // Create array with all days (fill missing days with 0)
+      const result = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+        
+        const dayData = ticketsPerDay.find(item => item.date === dateStr);
+        result.push({
+          date: dateStr,
+          day: date.getDate(),
+          month: date.getMonth() + 1,
+          count: dayData ? parseInt(dayData.count) : 0
+        });
+      }
+
+      return new Result(StatusEnum.OK, 200, result);
+    } catch (err) {
+      return new Result(StatusEnum.FAIL, 500, null, [{ message: err.message }]);
+    }
+  }
+
   // Helper method to build time range filters
   buildTimeRangeFilter(timeRange) {
     const now = new Date();

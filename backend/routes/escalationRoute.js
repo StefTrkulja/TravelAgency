@@ -64,6 +64,7 @@ router.post('/:id/accept', jwtParser.extractTokenUser, async (req, res) => {
 	return res.status(updateResult.code).json(updateResult);
 });
 
+// Get escalation by complaint/ticket ID
 router.get('/:id', jwtParser.extractTokenUser, async (req, res) => {
 	const ticketId = req.params.id;
 	const result = await EscalationService.getEscalationByTicketId(ticketId);
@@ -79,11 +80,48 @@ router.get('/:id', jwtParser.extractTokenUser, async (req, res) => {
 
 });
 
+// Get escalation with messages by complaint/ticket ID
+router.get('/by-complaint/:complaintId', 
+	jwtParser.extractTokenUser, 
+	async (req, res) => {
+		if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
+		if (req.user.role !== 'operator' && req.user.role !== 'manager') {
+			return res.status(403).json({ message: 'Forbidden' });
+		}
+		
+		const complaintId = req.params.complaintId;
+		
+		try {
+			// Prvo dobij escalation
+			const escalationResult = await EscalationService.getEscalationByTicketId(complaintId);
+			
+			if (escalationResult.status !== StatusEnum.OK) {
+				return res.status(escalationResult.code).json({ escalation: null, messages: [] });
+			}
+			
+			const escalation = escalationResult.data;
+			
+			// Zatim dobij poruke
+			const messagesResult = await EscalationMessageService.findMessagesByEscalationId(escalation.id);
+			const messages = messagesResult.status === StatusEnum.OK ? messagesResult.data : [];
+			
+			return res.status(200).json({
+				escalation: escalation,
+				messages: messages
+			});
+			
+		} catch (error) {
+			console.error('Error fetching escalation by complaint:', error);
+			return res.status(500).json({ message: 'Internal server error' });
+		}
+	}
+);
+
 router.get('/:id/messages',
 	jwtParser.extractTokenUser,
 	async (req, res) => {
 		if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
-		if (req.user.role !== 'operator ' && req.user.role !== 'manager') {
+		if (req.user.role !== 'operator' && req.user.role !== 'manager') {
 			return res.status(403).json({ message: 'Forbidden' });
 		}
 		const escalationId = req.params.id;

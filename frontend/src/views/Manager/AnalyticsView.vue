@@ -9,16 +9,28 @@
           <p class="page-subtitle">Monitor performance and SLA compliance</p>
         </div>
       </div>
-      <v-select
-        v-model="selectedTimeRange"
-        :items="timeRangeOptions"
-        label="Time Range"
-        variant="outlined"
-        density="comfortable"
-        class="time-range-selector"
-        @update:model-value="fetchAnalytics"
-        prepend-inner-icon="mdi-calendar-range"
-      />
+      <div class="header-actions">
+        <v-btn
+          variant="elevated"
+          color="var(--warm-orange)"
+          class="pdf-btn mr-3"
+          @click="generatePDF"
+          prepend-icon="mdi-file-pdf-box"
+          :loading="generatingPDF"
+        >
+          Export PDF
+        </v-btn>
+        <v-select
+          v-model="selectedTimeRange"
+          :items="timeRangeOptions"
+          label="Time Range"
+          variant="outlined"
+          density="comfortable"
+          class="time-range-selector"
+          @update:model-value="fetchAnalytics"
+          prepend-inner-icon="mdi-calendar-range"
+        />
+      </div>
     </div>
 
     <!-- Navigation Cards -->
@@ -342,12 +354,15 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axiosInstance from '@/utils/axiosInstance'
+import jsPDF from 'jspdf'
+import { store } from '@/utils/store'
 
 // Router
 const router = useRouter()
 
 // Reactive data
 const loading = ref(true)
+const generatingPDF = ref(false)
 const selectedTimeRange = ref('30d')
 
 const slaTargets = ref({ percentage: 0, total: 0, achieved: 0 })
@@ -355,6 +370,7 @@ const activeTickets = ref({ unbreached: 0, breached: 0 })
 const ticketsNearingBreach = ref([])
 const customerSatisfaction = ref([])
 const slaTargetsToday = ref({ breached: 0, unbreached: 0, total: 0 })
+const ticketsPerDay = ref([])
 
 // Time range options
 const timeRangeOptions = [
@@ -411,6 +427,7 @@ async function fetchAnalytics() {
     ticketsNearingBreach.value = data.ticketsNearingBreach
     customerSatisfaction.value = data.customerSatisfaction
     slaTargetsToday.value = data.slaTargetsToday
+    ticketsPerDay.value = data.ticketsPerDay || []
 
   } catch (error) {
     console.error('Failed to fetch analytics:', error)
@@ -420,6 +437,7 @@ async function fetchAnalytics() {
     ticketsNearingBreach.value = []
     customerSatisfaction.value = []
     slaTargetsToday.value = { breached: 0, unbreached: 0, total: 0 }
+    ticketsPerDay.value = []
   } finally {
     loading.value = false
   }
@@ -471,6 +489,348 @@ function formatDate(dateString) {
   })
 }
 
+async function generatePDF() {
+  generatingPDF.value = true
+  try {
+    const doc = new jsPDF()
+    
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+    let yPosition = 15
+    
+    // Helper functions
+    function addWarmBackground() {
+      doc.setFillColor(254, 243, 226) // warm cream
+      doc.rect(0, 0, pageWidth, pageHeight, 'F')
+    }
+    
+    function drawRoundedRect(x, y, width, height, radius, fillColor) {
+      if (fillColor) {
+        const [r, g, b] = fillColor
+        doc.setFillColor(r, g, b)
+        doc.roundedRect(x, y, width, height, radius, radius, 'F')
+      } else {
+        doc.roundedRect(x, y, width, height, radius, radius, 'S')
+      }
+    }
+    
+    function drawBarChart(x, y, width, height, value, maxValue, color) {
+      doc.setFillColor(229, 231, 235)
+      doc.rect(x, y, width, height, 'F')
+      const barWidth = (value / maxValue) * width
+      const [r, g, b] = color
+      doc.setFillColor(r, g, b)
+      doc.rect(x, y, barWidth, height, 'F')
+    }
+    
+    function drawLineChart(x, y, width, height, data) {
+      if (!data || data.length === 0) return
+      
+      // Background
+      doc.setFillColor(249, 250, 251)
+      doc.rect(x, y, width, height, 'F')
+      
+      // Border
+      doc.setDrawColor(229, 231, 235)
+      doc.setLineWidth(0.5)
+      doc.rect(x, y, width, height, 'S')
+      
+      const maxCount = Math.max(...data.map(d => d.count), 1)
+      const stepX = width / (data.length - 1)
+      
+      // Draw line
+      doc.setDrawColor(212, 115, 10)
+      doc.setLineWidth(1)
+      
+      for (let i = 0; i < data.length - 1; i++) {
+        const x1 = x + (i * stepX)
+        const y1 = y + height - ((data[i].count / maxCount) * height)
+        const x2 = x + ((i + 1) * stepX)
+        const y2 = y + height - ((data[i + 1].count / maxCount) * height)
+        doc.line(x1, y1, x2, y2)
+      }
+      
+      // Draw points
+      doc.setFillColor(212, 115, 10)
+      for (let i = 0; i < data.length; i++) {
+        const px = x + (i * stepX)
+        const py = y + height - ((data[i].count / maxCount) * height)
+        doc.circle(px, py, 0.8, 'F')
+      }
+    }
+    
+    // Add background
+    addWarmBackground()
+    
+    // Compact Header
+    doc.setFillColor(212, 115, 10)
+    doc.rect(0, 0, pageWidth, 25, 'F')
+    
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(18)
+    doc.setFont('helvetica', 'bold')
+    doc.text('TravelAgency Analytics Report', 15, 16)
+    
+    const currentDate = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', month: 'short', day: 'numeric' 
+    })
+    doc.setFontSize(9)
+    doc.text(`${currentDate} | Period: ${selectedTimeRange.value}`, pageWidth - 55, 16)
+    
+    yPosition = 35
+    doc.setTextColor(31, 41, 55)
+    
+    // Row 1: Key Metrics (3 columns)
+    const col1X = 15, col2X = 70, col3X = 125
+    const cardWidth = 50, cardHeight = 30
+    
+    // SLA Achievement
+    drawRoundedRect(col1X, yPosition, cardWidth, cardHeight, 3, [255, 255, 255])
+    doc.setDrawColor(212, 115, 10)
+    doc.roundedRect(col1X, yPosition, cardWidth, cardHeight, 3, 3, 'S')
+    
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(212, 115, 10)
+    doc.text('SLA Achievement', col1X + 3, yPosition + 6)
+    
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(31, 41, 55)
+    doc.text(`${slaTargets.value.percentage}%`, col1X + 3, yPosition + 16)
+    
+    doc.setFontSize(6)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(107, 114, 128)
+    doc.text(`${slaTargets.value.achieved}/${slaTargets.value.total}`, col1X + 3, yPosition + 22)
+    
+    drawBarChart(col1X + 3, yPosition + 24, cardWidth - 6, 3, slaTargets.value.percentage, 100, [22, 163, 74])
+    
+    // Active Tickets
+    drawRoundedRect(col2X, yPosition, cardWidth, cardHeight, 3, [255, 255, 255])
+    doc.setDrawColor(212, 115, 10)
+    doc.roundedRect(col2X, yPosition, cardWidth, cardHeight, 3, 3, 'S')
+    
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(212, 115, 10)
+    doc.text('Active Tickets', col2X + 3, yPosition + 6)
+    
+    const totalActive = activeTickets.value.unbreached + activeTickets.value.breached
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(31, 41, 55)
+    doc.text(`${totalActive}`, col2X + 3, yPosition + 16)
+    
+    doc.setFontSize(6)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(22, 163, 74)
+    doc.text(`OK: ${activeTickets.value.unbreached}`, col2X + 3, yPosition + 22)
+    doc.setTextColor(220, 38, 38)
+    doc.text(`Breach: ${activeTickets.value.breached}`, col2X + 20, yPosition + 22)
+    
+    // Today's Status
+    drawRoundedRect(col3X, yPosition, cardWidth, cardHeight, 3, [255, 255, 255])
+    doc.setDrawColor(212, 115, 10)
+    doc.roundedRect(col3X, yPosition, cardWidth, cardHeight, 3, 3, 'S')
+    
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(212, 115, 10)
+    doc.text('Today\'s SLA', col3X + 3, yPosition + 6)
+    
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(31, 41, 55)
+    doc.text(`${slaTargetsToday.value.total}`, col3X + 3, yPosition + 16)
+    
+    doc.setFontSize(6)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(22, 163, 74)
+    doc.text(`OK: ${slaTargetsToday.value.unbreached}`, col3X + 3, yPosition + 22)
+    doc.setTextColor(220, 38, 38)
+    doc.text(`Breach: ${slaTargetsToday.value.breached}`, col3X + 20, yPosition + 22)
+    
+    yPosition += 40
+    
+    // Row 2: Charts (2 columns)
+    const chartWidth = 80, chartHeight = 35
+    
+    // Tickets Per Day Chart
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(212, 115, 10)
+    doc.text(`Tickets per Day (${selectedTimeRange.value})`, 15, yPosition)
+    
+    if (ticketsPerDay.value && ticketsPerDay.value.length > 0) {
+      drawLineChart(15, yPosition + 5, chartWidth, chartHeight, ticketsPerDay.value)
+      
+      // Chart labels
+      doc.setFontSize(6)
+      doc.setTextColor(107, 114, 128)
+      const maxCount = Math.max(...ticketsPerDay.value.map(d => d.count), 1)
+      doc.text(`Max: ${maxCount}`, 15, yPosition + chartHeight + 15)
+      doc.text(`Avg: ${Math.round(ticketsPerDay.value.reduce((a, b) => a + b.count, 0) / ticketsPerDay.value.length)}`, 40, yPosition + chartHeight + 15)
+    }
+    
+    // Customer Satisfaction Chart
+    doc.text('Customer Satisfaction', 105, yPosition)
+    
+    if (customerSatisfaction.value && customerSatisfaction.value.length > 0) {
+      const ratings = customerSatisfaction.value.map(item => item.rating).filter(r => r > 0)
+      const avgRating = ratings.length > 0 ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : 0
+      
+      // Rating distribution
+      const ratingCounts = [0, 0, 0, 0, 0]
+      ratings.forEach(rating => {
+        const index = Math.floor(rating) - 1
+        if (index >= 0 && index < 5) ratingCounts[index]++
+      })
+      
+      const maxRating = Math.max(...ratingCounts, 1)
+      
+      // Draw mini bars
+      for (let i = 0; i < 5; i++) {
+        const barX = 105 + (i * 12)
+        const barHeight = (ratingCounts[i] / maxRating) * 20
+        const barY = yPosition + 25 - barHeight
+        
+        doc.setFillColor(245, 158, 11)
+        doc.rect(barX, barY, 8, barHeight, 'F')
+        
+        doc.setFontSize(6)
+        doc.setTextColor(31, 41, 55)
+        doc.text(`${i + 1}`, barX + 2, yPosition + 30)
+        doc.text(`${ratingCounts[i]}`, barX + 2, yPosition + 35)
+      }
+      
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(212, 115, 10)
+      doc.text(`Avg: ${avgRating}/5`, 105, yPosition + 45)
+    }
+    
+    yPosition += 55
+    
+    // Row 3: Tables (2 columns, compact)
+    const tableWidth = 85, tableHeight = 60
+    
+    // Tickets Nearing Breach (Left)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(212, 115, 10)
+    doc.text('Tickets Nearing SLA Breach', 15, yPosition)
+    
+    if (ticketsNearingBreach.value && ticketsNearingBreach.value.length > 0) {
+      // Compact table header
+      doc.setFontSize(6)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(75, 85, 99)
+      doc.text('ID', 15, yPosition + 8)
+      doc.text('Priority', 30, yPosition + 8)
+      doc.text('Assignee', 50, yPosition + 8)
+      doc.text('Risk', 75, yPosition + 8)
+      
+      // Table rows (max 8)
+      const maxRows = Math.min(ticketsNearingBreach.value.length, 8)
+      for (let i = 0; i < maxRows; i++) {
+        const ticket = ticketsNearingBreach.value[i]
+        const rowY = yPosition + 12 + (i * 6)
+        
+        doc.setFontSize(5)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(31, 41, 55)
+        
+        doc.text(`#${ticket.ticketId}`, 15, rowY)
+        doc.text(ticket.priority || 'N/A', 30, rowY)
+        doc.text((ticket.assignee || 'Unassigned').substring(0, 8), 50, rowY)
+        
+        const riskColor = ticket.riskType === 'High Risk' ? [220, 38, 38] :
+                         ticket.riskType === 'Medium Risk' ? [245, 158, 11] : [22, 163, 74]
+        doc.setTextColor(...riskColor)
+        doc.text((ticket.riskType || 'Unknown').substring(0, 6), 75, rowY)
+        doc.setTextColor(31, 41, 55)
+      }
+    } else {
+      doc.setFontSize(7)
+      doc.setTextColor(107, 114, 128)
+      doc.text('No tickets nearing breach', 15, yPosition + 15)
+    }
+    
+    // Customer Feedback (Right)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(212, 115, 10)
+    doc.text('Recent Customer Feedback', 105, yPosition)
+    
+    if (customerSatisfaction.value && customerSatisfaction.value.length > 0) {
+      const maxFeedback = Math.min(customerSatisfaction.value.length, 6)
+      for (let i = 0; i < maxFeedback; i++) {
+        const item = customerSatisfaction.value[i]
+        const rowY = yPosition + 10 + (i * 8)
+        
+        doc.setFontSize(6)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(31, 41, 55)
+        
+        const feedback = item.feedback || 'No feedback'
+        const shortFeedback = feedback.length > 30 ? feedback.substring(0, 27) + '...' : feedback
+        
+        doc.text(`#${item.ticketId} (${item.rating})`, 105, rowY)
+        doc.setTextColor(107, 114, 128)
+        doc.text(shortFeedback, 105, rowY + 4)
+        doc.setTextColor(31, 41, 55)
+      }
+    } else {
+      doc.setFontSize(7)
+      doc.setTextColor(107, 114, 128)
+      doc.text('No feedback available', 105, yPosition + 15)
+    }
+    
+    // Signature Section (Bottom)
+    const signatureY = pageHeight - 35
+    
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(212, 115, 10)
+    doc.text('Report Authorization', 15, signatureY)
+    
+    // Signature line
+    doc.setDrawColor(107, 114, 128)
+    doc.setLineWidth(0.3)
+    doc.line(15, signatureY + 15, 80, signatureY + 15)
+    
+    // Manager signature
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'italic')
+    doc.setTextColor(31, 41, 55)
+    const managerName = store.name && store.surname ? `${store.name} ${store.surname}` : store.username || 'Manager'
+    doc.text(managerName, 20, signatureY + 12)
+    
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(107, 114, 128)
+    doc.text('Manager Signature', 20, signatureY + 20)
+    doc.text(`Date: ${currentDate}`, 20, signatureY + 26)
+    
+    // Footer
+    doc.setFontSize(6)
+    doc.setFont('helvetica', 'italic')
+    doc.setTextColor(107, 114, 128)
+    doc.text('TravelAgency Analytics Report - Confidential', 15, pageHeight - 5)
+    doc.text('Page 1 of 1', pageWidth - 20, pageHeight - 5)
+    
+    // Save PDF
+    const filename = `TravelAgency_Analytics_${selectedTimeRange.value}_${new Date().toISOString().split('T')[0]}.pdf`
+    doc.save(filename)
+    
+  } catch (error) {
+    console.error('Error generating PDF:', error)
+  } finally {
+    generatingPDF.value = false
+  }
+}
+
 function goBack() {
   window.history.back()
 }
@@ -516,6 +876,24 @@ onMounted(() => {
       margin: 0;
       font-size: 1rem;
       opacity: 0.8;
+    }
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .pdf-btn {
+      font-weight: 600;
+      text-transform: none;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(212, 115, 10, 0.2);
+      
+      &:hover {
+        box-shadow: 0 4px 12px rgba(212, 115, 10, 0.3);
+        transform: translateY(-1px);
+      }
     }
   }
 

@@ -132,12 +132,13 @@ router.get('/dashboard',
       const { timeRange } = req.query;
 
       // Fetch all analytics data in parallel
-      const [slaTargets, nearingBreach, activeTickets, customerSatisfaction, slaTargetsToday] = await Promise.all([
+      const [slaTargets, nearingBreach, activeTickets, customerSatisfaction, slaTargetsToday, ticketsPerDay] = await Promise.all([
         AnalyticsService.getSlaTargetsAchievement({ timeRange }),
         AnalyticsService.getTicketsNearingBreach(),
         AnalyticsService.getActiveTicketsCount(),
         AnalyticsService.getCustomerSatisfaction({ timeRange }),
-        AnalyticsService.getSlaTargetsToday()
+        AnalyticsService.getSlaTargetsToday(),
+        AnalyticsService.getTicketsPerDay({ timeRange })
       ]);
 
       // Check if any failed and log detailed errors
@@ -161,6 +162,10 @@ router.get('/dashboard',
         console.error('SLA Targets Today failed:', slaTargetsToday.errors);
         return res.status(slaTargetsToday.code).json({ errors: slaTargetsToday.errors });
       }
+      if (ticketsPerDay.status === StatusEnum.FAIL) {
+        console.error('Tickets Per Day failed:', ticketsPerDay.errors);
+        return res.status(ticketsPerDay.code).json({ errors: ticketsPerDay.errors });
+      }
 
       // Combine all data
       const dashboardData = {
@@ -168,7 +173,8 @@ router.get('/dashboard',
         ticketsNearingBreach: nearingBreach.data,
         activeTickets: activeTickets.data,
         customerSatisfaction: customerSatisfaction.data,
-        slaTargetsToday: slaTargetsToday.data
+        slaTargetsToday: slaTargetsToday.data,
+        ticketsPerDay: ticketsPerDay.data
       };
 
       return res.status(200).json(dashboardData);
