@@ -266,6 +266,8 @@ export default {
     goCompensations() {
       this.$router.push({ name: 'CompensationsView' })
     },
+    goAnalytics()      { this.$router.push({ name: 'AnalyticsView' }) },
+
   },
 }
 </script>

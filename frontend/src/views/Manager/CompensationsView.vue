@@ -244,7 +244,7 @@ export default {
 
     goTickets()        { this.$router.push({ name: 'ManagerTicketsView' }) },
     goEscalations()  { this.$router.push({ name: 'EscalationsView' }) },
-    goAnalytics()      { this.$router.push({ name: 'Analytics' }) },
+    goAnalytics()      { this.$router.push({ name: 'AnalyticsView' }) },
     // === MOCK (ako zatreba) ===
     mockData() {
       const rows = [

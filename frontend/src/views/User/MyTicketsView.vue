@@ -101,7 +101,7 @@
                 item-title="label"
                 item-value="id"
                 :loading="loadingReservations"
-                :rules="[rules.required]"
+                :rules="[rules.required, rules.validReservation]"
                 hide-no-data
                 hide-details="auto"
                 class="mb-3"
@@ -114,7 +114,7 @@
                     :items="categories"
                     label="Choose category"
                     outlined
-                    :rules="[rules.required]"
+                    :rules="[rules.required, rules.validCategory]"
                     @update:model-value="onCategoryChange"
                   />
                 </v-col>
@@ -133,7 +133,9 @@
                 label="Description"
                 outlined
                 rows="5"
-                :rules="[rules.required]"
+                counter="5000"
+                maxlength="5000"
+                :rules="[rules.required, rules.max5000]"
               />
 
               <div class="d-flex justify-end mt-4">
@@ -150,11 +152,12 @@
                 v-model="filesInput"
                 multiple
                 prepend-icon="mdi-paperclip"
-                accept="image/*,.pdf,.doc,.docx"
-                hide-details
+                accept="image/*,.pdf,.doc,.docx,.txt"
+                hide-details="auto"
                 show-size
                 density="comfortable"
                 variant="outlined"
+                :rules="[rules.fileCount, rules.fileSize, rules.fileType]"
                 @update:model-value="onFilesPicked"
               >
                 <template #label>
@@ -198,18 +201,41 @@
                 <v-btn color="primary" :loading="submitting" @click="submit">Submit</v-btn>
               </div>
             </div>
+
+            <!-- Error Message -->
+            <v-alert
+              v-if="errorMessage"
+              type="error"
+              variant="tonal"
+              class="mt-4"
+              closable
+              @click:close="errorMessage = ''"
+            >
+              {{ errorMessage }}
+            </v-alert>
           </div>
         </v-card-text>
       </v-card>
     </v-dialog>
+
+    <!-- RATE SERVICE DIALOG -->
+    <RateServiceDialog
+      v-model="rateDialog"
+      :ticket="selectedTicket"
+      @rated="onTicketRated"
+    />
   </v-container>
 </template>
 
 <script>
 import axiosInstance from '@/utils/axiosInstance';
+import RateServiceDialog from '@/components/RateServiceDialog.vue';
 
 export default {
   name: 'MyTickets',
+  components: {
+    RateServiceDialog
+  },
   data() {
     return {
       loading: true,
@@ -243,7 +269,33 @@ export default {
           (v !== null && v !== undefined && String(v).trim().length > 0) || 'This field is required',
         max128: v => (!v || String(v).length <= 128) || 'Max 128 characters',
         max255: v => (!v || String(v).length <= 255) || 'Max 255 characters',
+        max5000: v => (!v || String(v).length <= 5000) || 'Max 5000 characters',
+        validCategory: v => !v || ['Accommodation', 'Transport', 'Finance', 'Support', 'Other'].includes(v) || 'Invalid category',
+        validReservation: v => !v || Number.isInteger(Number(v)) || 'Invalid reservation ID',
+        fileCount: files => !files || files.length <= 10 || 'Maximum 10 files allowed',
+        fileSize: files => {
+          if (!files) return true;
+          const maxSize = 10 * 1024 * 1024; // 10MB
+          const oversized = files.find(f => f.size > maxSize);
+          return !oversized || `File "${oversized.name}" exceeds 10MB limit`;
+        },
+        fileType: files => {
+          if (!files) return true;
+          const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 
+                               'application/pdf', 'application/msword', 
+                               'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                               'text/plain'];
+          const invalidFile = files.find(f => !allowedTypes.includes(f.type));
+          return !invalidFile || `File type "${invalidFile.type}" not allowed`;
+        }
       },     // [{key,name,url,isImage,file}]
+
+      // rating dialog
+      rateDialog: false,
+      selectedTicket: null,
+      
+      // error handling
+      errorMessage: ''
     };
   },
   created() {
@@ -293,19 +345,27 @@ export default {
       if (val !== 'Other') this.form.customCategory = '';
     },
     async nextStep() {
-      // validate step 1
+      // Validate step 1 using form ref
       this.validatingStep1 = true;
-      const okSubject = this.form.subject && this.form.subject.trim().length > 0 && this.form.subject.length <= 255;
-      const okReservation = !!this.form.reservationId;
-      const okCategory =
-        this.form.category === 'Other'
-          ? this.form.customCategory && this.form.customCategory.trim().length > 0 && this.form.customCategory.length <= 128
-          : !!this.form.category;
-      const okDesc = this.form.description && this.form.description.trim().length > 0;
+      
+      // Check form validity using Vuetify validation
+      const { valid } = await this.$refs.step1Form.validate();
+      
+      if (valid) {
+        // Additional custom validations
+        const okSubject = this.form.subject && this.form.subject.trim().length > 0 && this.form.subject.length <= 255;
+        const okReservation = !!this.form.reservationId;
+        const okCategory = this.categories.includes(this.form.category) || 
+          (this.form.category === 'Other' && this.form.customCategory && this.form.customCategory.trim().length > 0);
+        const okDesc = this.form.description && this.form.description.trim().length > 0 && this.form.description.length <= 5000;
 
-      if (okSubject && okReservation && okCategory && okDesc) {
-        this.step = 2;
+        if (okSubject && okReservation && okCategory && okDesc) {
+          this.step = 2;
+        } else {
+          console.warn('Form validation failed on custom checks');
+        }
       }
+      
       this.validatingStep1 = false;
     },
     prevStep() {
@@ -371,43 +431,96 @@ export default {
     // ===== Submit =====
     async submit() {
       this.submitting = true;
+      this.errorMessage = '';
+      
       try {
+        // Final validation before submit
+        if (!this.form.subject || this.form.subject.trim().length === 0) {
+          throw new Error('Subject is required');
+        }
+        if (!this.form.reservationId) {
+          throw new Error('Reservation is required');
+        }
+        if (!this.form.category) {
+          throw new Error('Category is required');
+        }
+        if (this.form.category === 'Other' && (!this.form.customCategory || this.form.customCategory.trim().length === 0)) {
+          throw new Error('Custom category is required when "Other" is selected');
+        }
+        if (!this.form.description || this.form.description.trim().length === 0) {
+          throw new Error('Description is required');
+        }
+        if (this.attachments.length > 10) {
+          throw new Error('Maximum 10 files allowed');
+        }
+
         const categoryName =
           this.form.category === 'Other'
             ? this.form.customCategory.trim()
             : this.form.category;
 
         const fd = new FormData();
-        fd.append('subject', this.form.subject);
+        fd.append('subject', this.form.subject.trim());
         fd.append('reservationId', this.form.reservationId);
-        fd.append('categoryName', categoryName);
-        fd.append('description', this.form.description);
+        fd.append('category', categoryName);
+        fd.append('description', this.form.description.trim());
+        
         this.attachments.forEach((a, idx) => {
-          fd.append('attachments', a.file, a.file.name || `file_${idx}`);
+          if (a.file) {
+            fd.append('attachments', a.file, a.file.name || `file_${idx}`);
+          }
         });
-				console.log("Saljem zahtev:", fd);
-        await axiosInstance.post('/complaint/newcomplaint', fd, {
+
+        const response = await axiosInstance.post('/complaint/newcomplaint', fd, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
 
+        console.log('Ticket created successfully:', response.data);
         await this.fetchTickets();
         this.cancel();
-      } catch (e) {
-        console.error('Submit ticket failed', e);
+        
+        // Show success message (if you have snackbar)
+        // this.showSnackbar('Ticket created successfully!', 'success');
+
+      } catch (error) {
+        console.error('Submit ticket failed', error);
+        
+        // Handle backend validation errors
+        if (error.response?.data?.errors) {
+          const errors = error.response.data.errors;
+          this.errorMessage = errors.map(e => e.message || e.field || 'Unknown error').join('; ');
+        } else if (error.message) {
+          this.errorMessage = error.message;
+        } else {
+          this.errorMessage = 'Failed to create ticket. Please try again.';
+        }
+        
       } finally {
         this.submitting = false;
       }
     },
 
     // ===== Existing cards actions =====
-    isClosed(s) {
-      return String(s).trim().toLowerCase() === 'closed';
+    isClosed(status) {
+      if (!status) return false;
+      const statusName = status.name || status;
+      return String(statusName).trim().toLowerCase() === 'closed';
     },
     viewDetails(t) {
       this.$router.push({ name: 'TicketDetails', params: { id: t.id } });
     },
     rate(t) {
-      console.log('Rate ticket', t.id);
+      this.selectedTicket = t;
+      this.rateDialog = true;
+    },
+
+    onTicketRated(ratingData) {
+      console.log('Ticket rated:', ratingData);
+      // Možete dodati snackbar obaveštenje
+      // this.showSnackbar('Thank you for your feedback!', 'success');
+      
+      // Opciono: Osvežiti listu tiketa da se sakrije dugme
+      this.fetchTickets();
     },
 
     shortName(name) {

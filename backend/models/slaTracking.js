@@ -4,7 +4,11 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class SlaTracking extends Model {
     static associate(models) {
-      SlaTracking.belongsTo(models.Complaint, { foreignKey: 'id', as: 'complaint' });
+      SlaTracking.belongsTo(models.Complaint, { 
+        foreignKey: 'id', 
+        targetKey: 'id',
+        as: 'complaint' 
+      });
     }
   }
 

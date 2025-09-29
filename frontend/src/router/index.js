@@ -12,6 +12,7 @@ import ManagerTicketsView from '@/views/Manager/ManagerTicketsView.vue';
 import ManagerTicketDetails from '../views/Manager/ManagerTicketDetails.vue';
 import EscalationsView from '@/views/Manager/EscalationsView.vue';
 import CompensationsView from '@/views/Manager/CompensationsView.vue';
+import AnalyticsView from '@/views/Manager/AnalyticsView.vue';
 // Define your routes
 const routes = [
   { path: '/', name: 'Home', component: HomeView },
@@ -25,6 +26,7 @@ const routes = [
   { path: '/manager/tickets/:id', name: 'ManagerTicketDetails', component: ManagerTicketDetails, meta: { requiresAuth: true, role: ['manager'] }},
   { path: '/escalations', name: 'EscalationsView', component: EscalationsView, meta: { requiresAuth: true, role: ['manager'] }},
   { path: '/compensations', name: 'CompensationsView', component: CompensationsView, meta: { requiresAuth: true, role: ['manager'] }},
+  { path: '/analytics', name: 'AnalyticsView', component: AnalyticsView, meta: { requiresAuth: true, role: ['manager'] }},
   { path: '/operator/triage/:id', name: 'ComplaintTriage', component: () => import('@/views/Operator/ComplaintTriage.vue') }
 ];
 

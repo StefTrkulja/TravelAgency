@@ -12,6 +12,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 const StatusService = require('../services/statusService');
 const slaTrackingService = require('../services/slaTrackingService');
+const ComplaintValidators = require('../validators/complaintValidators');
 
 
 router.get('/mycomplaints',
@@ -87,11 +88,17 @@ router.get('/operator',
 );
 
 router.patch('/:id/priority', jwtParser.extractTokenUser, async (req, res) => {
-
 	if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
 	if (req.user.role !== 'operator') {
 		return res.status(403).json({ message: 'Forbidden' });
 	}
+
+	// Validacija podataka
+	const validationResult = ComplaintValidators.validateUpdatePriority(req.body);
+	if (validationResult.status === StatusEnum.FAIL) {
+		return res.status(validationResult.code).json({ errors: validationResult.errors });
+	}
+
 	const complaintId = req.params.id;
 	const { priority } = req.body;
 	const result = await ComplaintService.updatePriority(complaintId, priority);
@@ -127,6 +134,13 @@ router.post('/accept',
 		if (req.user.role !== 'operator') {
 			return res.status(403).json({ message: 'Forbidden' });
 		}
+
+		// Validacija podataka
+		const validationResult = ComplaintValidators.validateAssignOperator(req.body);
+		if (validationResult.status === StatusEnum.FAIL) {
+			return res.status(validationResult.code).json({ errors: validationResult.errors });
+		}
+
 		const { complaintId, assigneeUsername, priority } = req.body;
 		const result = await ComplaintService.assignToOperator(complaintId, assigneeUsername, priority);
 		if (result.status === StatusEnum.FAIL) {
@@ -140,17 +154,22 @@ router.post('/mycomplaints/:id/messages',
 	jwtParser.extractTokenUser,
 	async (req, res) => {
 		if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
+		
 		const complaintId = req.params.id;
-		const text = req.body.text;
-		const authorUsername = req.user.username;
-		const message = {
+		const messageData = {
 			complaintId: complaintId,
-			text: text,
-			authorUsername: authorUsername,
+			text: req.body.text,
+			authorUsername: req.user.username,
 			createdAt: new Date()
 		};
-		const result = await ComplaintMessageService.createMessage(message);
 
+		// Validacija podataka
+		const validationResult = ComplaintValidators.validateMessage(messageData);
+		if (validationResult.status === StatusEnum.FAIL) {
+			return res.status(validationResult.code).json({ errors: validationResult.errors });
+		}
+
+		const result = await ComplaintMessageService.createMessage(messageData);
 		if (result.status === StatusEnum.FAIL) {
 			return res.status(result.code).json({ errors: result.errors });
 		}
@@ -165,16 +184,22 @@ router.post('/:id/messages',
 		if (req.user.role !== 'operator') {
 			return res.status(403).json({ message: 'Forbidden' });
 		}
+		
 		const complaintId = req.params.id;
-		const text = req.body.text;
-		const authorUsername = req.user.username;
-		const message = {
+		const messageData = {
 			complaintId: complaintId,
-			text: text,
-			authorUsername: authorUsername,
+			text: req.body.text,
+			authorUsername: req.user.username,
 			createdAt: new Date()
 		};
-		const result = await ComplaintMessageService.createMessage(message);
+
+		// Validacija podataka
+		const validationResult = ComplaintValidators.validateMessage(messageData);
+		if (validationResult.status === StatusEnum.FAIL) {
+			return res.status(validationResult.code).json({ errors: validationResult.errors });
+		}
+
+		const result = await ComplaintMessageService.createMessage(messageData);
 		if (result.status === StatusEnum.FAIL) {
 			return res.status(result.code).json({ errors: result.errors });
 		}
@@ -222,7 +247,6 @@ router.post('/newcomplaint',
 	async (req, res) => {
 		if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
 
-
 		const complaintData = {
 			subject: req.body.subject,
 			description: req.body.description,
@@ -230,29 +254,38 @@ router.post('/newcomplaint',
 			lastActivityAt: new Date(),
 			statusId: 7,
 			reservationId: req.body.reservationId,
-			category: req.body.categoryName,
+			category: req.body.categoryName || req.body.category,
 			createdByUsername: req.user.username,
 		}
-		const result = await ComplaintService.createComplaint(complaintData);
-		if (result.status === StatusEnum.FAIL) {
-			return res.status(result.code).json({ errors: result.errors });
+
+		// Validacija podataka
+		const validationResult = await ComplaintValidators.validateCreateComplaint(complaintData, req.files);
+		if (validationResult.status === StatusEnum.FAIL) {
+			return res.status(validationResult.code).json({ errors: validationResult.errors });
 		}
-		const complaint = result.data;
-		const uploadedFiles = req.files || [];
-		const attachments = await AttachmentService.saveMany(complaint.id, uploadedFiles);
 
-		const files = req.files || [];
+		try {
+			const result = await ComplaintService.createComplaint(complaintData);
+			if (result.status === StatusEnum.FAIL) {
+				return res.status(result.code).json({ errors: result.errors });
+			}
 
+			const complaint = result.data;
+			const uploadedFiles = req.files || [];
+			const attachments = await AttachmentService.saveMany(complaint.id, uploadedFiles);
 
-		// ... pozovi servis, snimi fajlove (disk/S3) itd.
-		return res.status(201).json({
-			complaint: result.data,
-			attachments: attachments.map(a => ({
-				id: a.id,
-				storageKey: a.storageKey
-			}))
+			return res.status(201).json({
+				complaint: result.data,
+				attachments: attachments.map(a => ({
+					id: a.id,
+					storageKey: a.storageKey
+				}))
+			});
 
-		});
+		} catch (error) {
+			console.error('Create complaint error:', error);
+			return res.status(500).json({ errors: [{ message: 'Internal server error' }] });
+		}
 	}
 );
 
@@ -295,6 +328,13 @@ router.post('/:id/transition',
 		if (req.user.role !== 'operator') {
 			return res.status(403).json({ message: 'Forbidden' });
 		}
+
+		// Validacija podataka
+		const validationResult = ComplaintValidators.validateStatusTransition(req.body);
+		if (validationResult.status === StatusEnum.FAIL) {
+			return res.status(validationResult.code).json({ errors: validationResult.errors });
+		}
+
 		const id = Number(req.params.id);
 		const { toCode, note } = req.body;
 		const result = await ComplaintService.transition(id, toCode, req.user.username, note);

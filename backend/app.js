@@ -11,6 +11,8 @@ const statusRoute = require('./routes/statusRoute');
 const escalationRoute = require('./routes/escalationRoute');
 const compensationRoute = require('./routes/compensationRoute');	
 const slaParameterRoute = require('./routes/slaParameterRoute');
+const analyticsRoute = require('./routes/analyticsRoute');
+const customerSatisfactionRoute = require('./routes/customerSatisfactionRoute');
 const sequelize = require('./models/index').sequelize;
 const { register } = require('./utils/metrics');
 const path = require('path');
@@ -26,7 +28,10 @@ const app = express();
 
 app.use(cors({
 	origin: process.env.CLIENT_URL,
-	credentials: true
+	credentials: true,
+	methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+	allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with'],
+	optionsSuccessStatus: 200
 }));
 app.use(cookieParser());
 app.use(express.json());
@@ -41,6 +46,8 @@ app.use('/api/complaint', complaintRoute);
 app.use('/api/status', statusRoute);
 app.use('/api/escalation', escalationRoute);
 app.use('/api/compensation', compensationRoute);
+app.use('/api/analytics', analyticsRoute);
+app.use('/api/satisfaction', customerSatisfactionRoute);
 // app.use('/api/post', postRoute);
 // app.use('/api/location', locationRoute);
 // app.use('/api/image', imageRoute);

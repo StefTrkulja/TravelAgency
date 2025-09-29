@@ -8,9 +8,14 @@ module.exports = (sequelize, DataTypes) => {
       Complaint.hasMany(models.Attachment, { foreignKey: 'complaintId', as: 'attachments' });
       Complaint.hasMany(models.ComplaintMessage, { foreignKey: 'complaintId', as: 'messages' });
       Complaint.hasMany(models.ComplaintStatusHistory, { foreignKey: 'complaintId', as: 'statusHistory' });
-      Complaint.hasOne(models.SlaTracking, { foreignKey: 'id', as: 'sla' }); // deljenje PK
+      Complaint.hasOne(models.SlaTracking, { 
+        foreignKey: 'id', 
+        sourceKey: 'id',
+        as: 'sla' 
+      }); // deljenje PK
       Complaint.hasOne(models.Escalation, { foreignKey: 'complaintId', as: 'escalation' });
       Complaint.hasMany(models.Compensation, { foreignKey: 'complaintId', as: 'compensations' });
+      Complaint.hasOne(models.CustomerSatisfaction, { foreignKey: 'complaintId', as: 'satisfaction' });
       Complaint.belongsTo(models.Reservation, { foreignKey: 'reservationId', as: 'reservation' });
       Complaint.belongsTo(models.User, { foreignKey: 'createdByUsername', as: 'createdBy' });
       Complaint.belongsTo(models.User, { foreignKey: 'assigneeUsername', as: 'assignee' });

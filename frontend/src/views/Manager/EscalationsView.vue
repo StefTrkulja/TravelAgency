@@ -230,7 +230,7 @@ export default {
 
     goTickets()        { this.$router.push({ name: 'ManagerTicketsView' }) },
     goCompensations()  { this.$router.push({ name: 'CompensationsView' }) },
-    goAnalytics()      { this.$router.push({ name: 'Analytics' }) },
+    goAnalytics()      { this.$router.push({ name: 'AnalyticsView' }) },
   },
 }
 </script>

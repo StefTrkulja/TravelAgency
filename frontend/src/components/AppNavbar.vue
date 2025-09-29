@@ -84,6 +84,7 @@ export default {
           { label: 'Arrangement Approval', to: '/arrangement-approval', icon: 'mdi-check-decagram' },
           { label: 'Operator Tickets', to: '/operator-tickets', icon: 'mdi-ticket-account' }, // menadžerski view
           { label: 'Report & Analytics', to: '/reports', icon: 'mdi-chart-line' },
+          { label: 'Report & Analytics', to: '/reports', icon: 'mdi-chart-line' },
         ];
       }
       return [];
