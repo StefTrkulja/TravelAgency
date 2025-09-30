@@ -1,324 +1,344 @@
 <template>
-  <v-container class="py-8" fluid>
-    <!-- Header Section -->
-    <div class="d-flex align-center justify-space-between mb-8">
-      <div>
-        <h1 class="text-h4 font-weight-bold text-primary mb-2">
-          <v-icon class="mr-2" size="32">mdi-map-marker-star</v-icon>
-          Activities Management
-        </h1>
-        <h2 class="text-h6 text-grey-darken-1">{{ arrangementName }}</h2>
-      </div>
-      
-      <div v-if="store.role === 'operator'" class="d-flex align-center ga-3">
-        <v-chip 
-          color="primary" 
-          variant="tonal" 
-          prepend-icon="mdi-counter"
-        >
-          {{ activities.length }} Activities
-        </v-chip>
-        <v-btn 
-          color="primary" 
-          variant="elevated"
-          prepend-icon="mdi-plus"
-          @click="openCreateDialog"
-          size="large"
-        >
-          Create Activity
-        </v-btn>
-      </div>
-      
-      <div v-else-if="store.role === 'manager'" class="text-center">
-        <v-chip 
-          color="success" 
-          variant="tonal" 
-          prepend-icon="mdi-chart-line"
-          class="mb-2"
-        >
-          Manager Dashboard
-        </v-chip>
-        <div class="text-caption">{{ activities.length }} activities to manage</div>
+  <v-container class="activities-container" fluid>
+    <!-- Header Section with Warm Gradient -->
+    <div class="activities-header">
+      <div class="activities-header-content">
+        <div class="header-main">
+          <div class="header-icon">
+            <v-icon size="48" color="white">mdi-map-marker-star</v-icon>
+          </div>
+          <div>
+            <h1 class="activities-title font-heading">Activities Management</h1>
+            <h2 class="activities-subtitle">{{ arrangementName }}</h2>
+          </div>
+        </div>
+        
+        <div class="header-actions">
+          <div v-if="store.role === 'operator'" class="operator-actions">
+            <v-chip 
+              color="rgba(255, 255, 255, 0.9)" 
+              variant="elevated"
+              prepend-icon="mdi-counter"
+              class="count-chip"
+            >
+              {{ activities.length }} Activities
+            </v-chip>
+            <v-btn 
+              color="white" 
+              variant="elevated"
+              prepend-icon="mdi-plus"
+              @click="openCreateDialog"
+              class="create-btn"
+            >
+              Create Activity
+            </v-btn>
+          </div>
+          
+          <div v-else-if="store.role === 'manager'" class="manager-actions">
+            <v-chip 
+              color="rgba(255, 255, 255, 0.9)" 
+              variant="elevated"
+              prepend-icon="mdi-chart-line"
+              class="dashboard-chip"
+            >
+              Manager Dashboard
+            </v-chip>
+            <div class="activity-count">{{ activities.length }} activities to manage</div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Status Messages -->
-    <v-alert v-if="error" type="error" variant="tonal" class="mb-6" prominent>
-      <template v-slot:prepend>
-        <v-icon>mdi-alert-circle</v-icon>
-      </template>
-      {{ error }}
-    </v-alert>
-    
-    <v-progress-linear 
-      v-if="loading" 
-      indeterminate 
-      class="mb-6" 
-      color="primary"
-      height="6"
-      rounded
-    />
+    <div class="main-content">
 
-
-    <v-dialog v-model="showValueDialog" max-width="500">
-  <v-card>
-    <v-card-title class="text-h6">
-      Adjust Recommendation Weight
-    </v-card-title>
-    <v-card-text>
-      <p class="mb-4">
-        The recommendation system uses this weight to decide how prominently
-        this activity appears to customers. Increasing the weight will push
-        the activity higher in suggestions.
-      </p>
-      <v-slider
-        v-model="selectedValue"
-        :min="1"
-        :max="10"
-        step="1"
-        ticks="always"
-        tick-size="4"
-        thumb-label="always"
+      <!-- Status Messages -->
+      <v-alert v-if="error" type="error" variant="tonal" class="modern-alert" prominent>
+        <template v-slot:prepend>
+          <v-icon>mdi-alert-circle</v-icon>
+        </template>
+        <strong>Error:</strong> {{ error }}
+      </v-alert>
+      
+      <v-progress-linear 
+        v-if="loading" 
+        indeterminate 
+        class="loading-bar" 
+        color="primary"
+        height="6"
+        rounded
       />
-      <div class="text-center mt-2">
-        Current Weight: <strong>{{ selectedValue }}</strong> / 10
-      </div>
-    </v-card-text>
-    <v-card-actions>
-      <v-spacer />
-      <v-btn text @click="showValueDialog = false">Cancel</v-btn>
-      <v-btn color="primary" @click="confirmUpdateValue">
-        Save Weight
-      </v-btn>
-    </v-card-actions>
-  </v-card>
-</v-dialog>
 
-    <!-- Activities Grid -->
-    <v-row>
-      <v-col
-        v-for="a in activities"
-        :key="a.id"
-        cols="12"
-        lg="6"
-        xl="4"
-      >
-        <v-card
-          class="activity-card h-100"
-          variant="elevated"
-          elevation="3"
-          hover
-        >
-          <!-- Image Header -->
-          <div class="position-relative">
-            <v-img
-              v-if="a.imagePath"
-              :src="`http://localhost:3000/${a.imagePath}`"
-              alt="Activity image"
-              height="220"
-              cover
-              class="activity-image"
-            >
-              <template v-slot:placeholder>
-                <div class="d-flex align-center justify-center fill-height">
-                  <v-progress-circular indeterminate color="primary" />
-                </div>
-              </template>
-            </v-img>
-            <div
-              v-else
-              class="d-flex align-center justify-center activity-placeholder"
-              style="height: 220px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);"
-            >
-              <v-icon size="64" color="grey-lighten-1">mdi-image-outline</v-icon>
+
+      <v-dialog v-model="showValueDialog" max-width="500">
+        <v-card class="modern-card">
+          <v-card-title class="dialog-header">
+            <div class="dialog-header-content">
+              <v-icon class="mr-3" color="primary" size="32">mdi-tune</v-icon>
+              <div>
+                <h3 class="dialog-title">Adjust Recommendation Weight</h3>
+                <p class="dialog-subtitle">Optimize activity visibility</p>
+              </div>
             </div>
-
-            <!-- Status Badge -->
-            <v-chip
-              :color="a.status === 'ACTIVE' ? 'success' : 'warning'"
-              variant="flat"
-              size="small"
-              class="position-absolute"
-              style="top: 12px; right: 12px;"
-            >
-              {{ a.status }}
-            </v-chip>
-
-            <!-- Price Badge -->
-            <v-chip
-              color="primary"
-              variant="flat"
-              class="position-absolute font-weight-bold"
-              style="bottom: 12px; left: 12px;"
-            >
-              ${{ a.price }}
-            </v-chip>
-          </div>
-
-          <!-- Content -->
-          <v-card-text class="pb-2">
-            <div class="text-h6 font-weight-bold mb-2 text-primary">{{ a.name }}</div>
-            <p class="text-body-2 text-grey-darken-1 mb-3" style="line-height: 1.4;">
-              {{ a.description }}
+          </v-card-title>
+          <v-card-text class="pa-6">
+            <p class="weight-description">
+              The recommendation system uses this weight to decide how prominently
+              this activity appears to customers. Increasing the weight will push
+              the activity higher in suggestions.
             </p>
-
-            <!-- Activity Details -->
-            <div class="mb-4">
-              <v-row dense>
-                <v-col cols="6">
-                  <div class="d-flex align-center mb-1">
-                    <v-icon size="16" class="mr-1" color="grey-darken-1">mdi-account-group</v-icon>
-                    <span class="text-caption">Max: {{ a.maxCapacity }}</span>
-                  </div>
-                </v-col>
-                <v-col cols="6">
-                  <div class="d-flex align-center mb-1">
-                    <v-icon size="16" class="mr-1" color="grey-darken-1">mdi-clock-outline</v-icon>
-                    <span class="text-caption">{{ a.lengthInMin || 60 }}min</span>
-                  </div>
-                </v-col>
-                <v-col cols="6" v-if="a.difficulty">
-                  <div class="d-flex align-center">
-                    <v-icon size="16" class="mr-1" color="grey-darken-1">mdi-speedometer</v-icon>
-                    <span class="text-caption">Level {{ a.difficulty }}/5</span>
-                  </div>
-                </v-col>
-                <v-col cols="6" v-if="store.role === 'manager' && a.value">
-                  <div class="d-flex align-center">
-                    <v-icon size="16" class="mr-1" color="orange">mdi-star</v-icon>
-                    <span class="text-caption">Weight {{ a.value }}/10</span>
-                  </div>
-                </v-col>
-              </v-row>
-            </div>
-
-            <!-- Feature Tags -->
-            <div class="d-flex flex-wrap ga-1 mb-4">
-              <v-chip
-                v-if="a.isPetFriendly"
-                size="x-small"
-                color="green"
-                variant="tonal"
-              >
-                <v-icon size="12" start>mdi-dog</v-icon>
-                Pet Friendly
-              </v-chip>
-              <v-chip
-                v-if="a.isFamilyFriendly"
-                size="x-small"
-                color="blue"
-                variant="tonal"
-              >
-                <v-icon size="12" start>mdi-account-child</v-icon>
-                Family
-              </v-chip>
-              <v-chip
-                v-if="a.isOutdoor"
-                size="x-small"
-                color="teal"
-                variant="tonal"
-              >
-                <v-icon size="12" start>mdi-tree</v-icon>
-                Outdoor
-              </v-chip>
-              <v-chip
-                v-if="a.isAdventure"
-                size="x-small"
-                color="orange"
-                variant="tonal"
-              >
-                <v-icon size="12" start>mdi-hiking</v-icon>
-                Adventure
-              </v-chip>
-              <v-chip
-                v-if="a.isPremiumOption"
-                size="x-small"
-                color="purple"
-                variant="tonal"
-              >
-                <v-icon size="12" start>mdi-crown</v-icon>
-                Premium
-              </v-chip>
+            <v-slider
+              v-model="selectedValue"
+              :min="1"
+              :max="10"
+              step="1"
+              ticks="always"
+              tick-size="4"
+              thumb-label="always"
+              color="primary"
+              track-color="grey-lighten-3"
+              class="weight-slider"
+            />
+            <div class="weight-display">
+              Current Weight: <strong class="weight-value">{{ selectedValue }}</strong> / 10
             </div>
           </v-card-text>
-
-          <!-- Actions -->
-          <v-card-actions class="pt-0">
-            <div v-if="store.role === 'operator'" class="d-flex w-100 ga-1">
-              <v-btn
-                variant="outlined"
-                size="small"
-                icon="mdi-pencil"
-                @click="openEditDialog(a)"
-                class="flex-shrink-0"
-              />
-              <v-btn
-                variant="outlined"
-                size="small"
-                color="error"
-                icon="mdi-delete"
-                @click="confirmDelete(a)"
-                class="flex-shrink-0"
-              />
-              <v-btn
-                variant="flat"
-                color="primary"
-                @click="goToSchedules(a.id)"
-                class="flex-grow-1"
-                prepend-icon="mdi-calendar-plus"
-              >
-                Schedules
-              </v-btn>
-            </div>
-
-            <div v-else-if="store.role === 'manager'" class="d-flex flex-column w-100 ga-2">
-              <div class="d-flex ga-1">
-                <v-btn
-                  variant="flat"
-                  color="info"
-                  @click="openAnalyticsDialog(a.id)"
-                  class="flex-grow-1"
-                  prepend-icon="mdi-chart-line"
-                  size="small"
-                >
-                  Analytics
-                </v-btn>
-                <v-btn
-                  variant="outlined"
-                  color="primary"
-                  @click="openValueDialog(a)"
-                  class="flex-grow-1"
-                  prepend-icon="mdi-tune"
-                  size="small"
-                >
-                  Weight
-                </v-btn>
-              </div>
-              <div class="d-flex ga-1">
-                <v-btn
-                  variant="outlined"
-                  @click="goToReviews(a.id)"
-                  class="flex-grow-1"
-                  prepend-icon="mdi-star"
-                  size="small"
-                >
-                  Reviews
-                </v-btn>
-                <v-btn
-                  variant="outlined"
-                  @click="goToCustomers(a.id)"
-                  class="flex-grow-1"
-                  prepend-icon="mdi-account-group"
-                  size="small"
-                >
-                  Customers
-                </v-btn>
-              </div>
-            </div>
+          <v-card-actions class="pa-6 pt-0">
+            <v-spacer />
+            <v-btn variant="text" @click="showValueDialog = false" class="cancel-btn">Cancel</v-btn>
+            <v-btn color="primary" variant="elevated" @click="confirmUpdateValue" class="save-btn">
+              Save Weight
+            </v-btn>
           </v-card-actions>
         </v-card>
-      </v-col>
-    </v-row>
+      </v-dialog>
+
+      <!-- Activities Grid -->
+      <v-row class="activities-grid">
+        <v-col
+          v-for="a in activities"
+          :key="a.id"
+          cols="12"
+          lg="6"
+          xl="4"
+        >
+          <v-card
+            class="modern-card activity-card h-100"
+            variant="elevated"
+            elevation="0"
+            hover
+          >
+            <!-- Image Header -->
+            <div class="position-relative image-container">
+              <v-img
+                v-if="a.imagePath"
+                :src="`http://localhost:3000/${a.imagePath}`"
+                alt="Activity image"
+                height="220"
+                cover
+                class="activity-image"
+              >
+                <template v-slot:placeholder>
+                  <div class="d-flex align-center justify-center fill-height">
+                    <v-progress-circular indeterminate color="primary" />
+                  </div>
+                </template>
+              </v-img>
+              <div
+                v-else
+                class="d-flex align-center justify-center activity-placeholder"
+              >
+                <v-icon size="64" color="grey-lighten-1">mdi-image-outline</v-icon>
+              </div>
+
+              <!-- Status Badge -->
+              <v-chip
+                :color="a.status === 'ACTIVE' ? 'success' : 'warning'"
+                variant="flat"
+                size="small"
+                class="status-badge"
+              >
+                {{ a.status }}
+              </v-chip>
+
+              <!-- Price Badge -->
+              <v-chip
+                color="primary"
+                variant="flat"
+                class="price-badge"
+              >
+                ${{ a.price }}
+              </v-chip>
+            </div>
+
+            <!-- Content -->
+            <v-card-text class="card-content">
+              <div class="activity-title">{{ a.name }}</div>
+              <p class="activity-description">
+                {{ a.description }}
+              </p>
+
+              <!-- Activity Details -->
+              <div class="activity-details">
+                <v-row dense>
+                  <v-col cols="6">
+                    <div class="detail-item">
+                      <v-icon size="16" class="detail-icon" color="primary">mdi-account-group</v-icon>
+                      <span class="detail-text">Max: {{ a.maxCapacity }}</span>
+                    </div>
+                  </v-col>
+                  <v-col cols="6">
+                    <div class="detail-item">
+                      <v-icon size="16" class="detail-icon" color="primary">mdi-clock-outline</v-icon>
+                      <span class="detail-text">{{ a.lengthInMin || 60 }}min</span>
+                    </div>
+                  </v-col>
+                  <v-col cols="6" v-if="a.difficulty">
+                    <div class="detail-item">
+                      <v-icon size="16" class="detail-icon" color="primary">mdi-speedometer</v-icon>
+                      <span class="detail-text">Level {{ a.difficulty }}/5</span>
+                    </div>
+                  </v-col>
+                  <v-col cols="6" v-if="store.role === 'manager' && a.value">
+                    <div class="detail-item">
+                      <v-icon size="16" class="detail-icon" color="warning">mdi-star</v-icon>
+                      <span class="detail-text">Weight {{ a.value }}/10</span>
+                    </div>
+                  </v-col>
+                </v-row>
+              </div>
+
+              <!-- Feature Tags -->
+              <div class="feature-tags">
+                <v-chip
+                  v-if="a.isPetFriendly"
+                  size="small"
+                  color="success"
+                  variant="tonal"
+                  class="feature-chip"
+                >
+                  <v-icon size="14" start>mdi-dog</v-icon>
+                  Pet Friendly
+                </v-chip>
+                <v-chip
+                  v-if="a.isFamilyFriendly"
+                  size="small"
+                  color="info"
+                  variant="tonal"
+                  class="feature-chip"
+                >
+                  <v-icon size="14" start>mdi-account-child</v-icon>
+                  Family
+                </v-chip>
+                <v-chip
+                  v-if="a.isOutdoor"
+                  size="small"
+                  color="success"
+                  variant="tonal"
+                  class="feature-chip"
+                >
+                  <v-icon size="14" start>mdi-tree</v-icon>
+                  Outdoor
+                </v-chip>
+                <v-chip
+                  v-if="a.isAdventure"
+                  size="small"
+                  color="warning"
+                  variant="tonal"
+                  class="feature-chip"
+                >
+                  <v-icon size="14" start>mdi-hiking</v-icon>
+                  Adventure
+                </v-chip>
+                <v-chip
+                  v-if="a.isPremiumOption"
+                  size="small"
+                  color="deep-purple"
+                  variant="tonal"
+                  class="feature-chip"
+                >
+                  <v-icon size="14" start>mdi-crown</v-icon>
+                  Premium
+                </v-chip>
+              </div>
+            </v-card-text>
+
+            <!-- Actions -->
+            <v-card-actions class="card-actions">
+              <div v-if="store.role === 'operator'" class="operator-actions-card">
+                <v-btn
+                  variant="outlined"
+                  size="small"
+                  icon="mdi-pencil"
+                  @click="openEditDialog(a)"
+                  class="action-btn edit-btn"
+                />
+                <v-btn
+                  variant="outlined"
+                  size="small"
+                  color="error"
+                  icon="mdi-delete"
+                  @click="confirmDelete(a)"
+                  class="action-btn delete-btn"
+                />
+                <v-btn
+                  variant="elevated"
+                  color="primary"
+                  @click="goToSchedules(a.id)"
+                  class="schedules-btn"
+                  prepend-icon="mdi-calendar-plus"
+                >
+                  Schedules
+                </v-btn>
+              </div>
+
+              <div v-else-if="store.role === 'manager'" class="manager-actions-card">
+                <div class="manager-btn-row">
+                  <v-btn
+                    variant="elevated"
+                    color="info"
+                    @click="openAnalyticsDialog(a.id)"
+                    class="manager-btn"
+                    prepend-icon="mdi-chart-line"
+                    size="small"
+                  >
+                    Analytics
+                  </v-btn>
+                  <v-btn
+                    variant="outlined"
+                    color="primary"
+                    @click="openValueDialog(a)"
+                    class="manager-btn"
+                    prepend-icon="mdi-tune"
+                    size="small"
+                  >
+                    Weight
+                  </v-btn>
+                </div>
+                <div class="manager-btn-row">
+                  <v-btn
+                    variant="outlined"
+                    @click="goToReviews(a.id)"
+                    class="manager-btn"
+                    prepend-icon="mdi-star"
+                    size="small"
+                  >
+                    Reviews
+                  </v-btn>
+                  <v-btn
+                    variant="outlined"
+                    @click="goToCustomers(a.id)"
+                    class="manager-btn"
+                    prepend-icon="mdi-account-group"
+                    size="small"
+                  >
+                    Customers
+                  </v-btn>
+                </div>
+              </div>
+            </v-card-actions>
+          </v-card>
+        </v-col>
+      </v-row>
 
 
     <!-- Analytics Dialog -->
@@ -392,6 +412,7 @@
     <v-snackbar v-model="snackbar.open" :timeout="2500">
       {{ snackbar.msg }}
     </v-snackbar>
+    </div>
   </v-container>
 </template>
 
@@ -620,15 +641,131 @@ onMounted(fetchActivities);
 </script>
 
 <style scoped>
+.activities-container {
+  background: linear-gradient(135deg, var(--warm-orange) 0%, var(--warm-amber) 100%);
+  min-height: 100vh;
+  padding: 0;
+}
+
+/* Header Styling */
+.activities-header {
+  background: linear-gradient(135deg, var(--warm-orange) 0%, var(--warm-amber) 100%);
+  color: white;
+  padding: 2rem;
+  margin: -24px -24px 2rem -24px;
+}
+
+.activities-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header-main {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header-icon {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activities-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.activities-subtitle {
+  font-size: 1.1rem;
+  margin: 0.5rem 0 0 0;
+  opacity: 0.9;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.operator-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.count-chip,
+.dashboard-chip {
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: var(--warm-orange) !important;
+  font-weight: 600;
+}
+
+.create-btn {
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: var(--warm-orange) !important;
+  font-weight: 600;
+  min-width: 160px;
+}
+
+.manager-actions {
+  text-align: center;
+}
+
+.activity-count {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  margin-top: 0.5rem;
+}
+
+/* Main Content */
+.main-content {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Loading and Error */
+.loading-bar {
+  margin-bottom: 1rem;
+  border-radius: 6px;
+}
+
+.modern-alert {
+  margin-bottom: 1rem;
+}
+
+/* Activities Grid */
+.activities-grid {
+  margin: 0;
+}
+
+/* Activity Cards */
 .activity-card {
   transition: all 0.3s ease;
   border-radius: 16px !important;
   overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
 }
 
 .activity-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* Image Container */
+.image-container {
+  position: relative;
+  overflow: hidden;
 }
 
 .activity-image {
@@ -641,64 +778,258 @@ onMounted(fetchActivities);
 }
 
 .activity-placeholder {
+  height: 220px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   border-radius: 0;
 }
 
-/* Custom chip styling */
-.v-chip {
+/* Status and Price Badges */
+.status-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-weight: 600;
+  z-index: 2;
+}
+
+.price-badge {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  font-weight: 700;
+  font-size: 1rem;
+  z-index: 2;
+}
+
+/* Card Content */
+.card-content {
+  padding: 1.5rem !important;
+}
+
+.activity-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--warm-orange);
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+
+.activity-description {
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Activity Details */
+.activity-details {
+  margin-bottom: 1rem;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.detail-icon {
+  margin-right: 0.5rem;
+}
+
+.detail-text {
+  font-size: 0.85rem;
+  color: #666;
   font-weight: 500;
 }
 
-/* Status badge positioning */
-.position-absolute {
-  position: absolute;
+/* Feature Tags */
+.feature-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
 }
 
-/* Smooth transitions for all interactive elements */
-.v-btn {
-  transition: all 0.2s ease;
+.feature-chip {
+  font-weight: 600;
+  font-size: 0.75rem;
 }
 
-.v-btn:hover {
-  transform: translateY(-1px);
+/* Card Actions */
+.card-actions {
+  padding: 0 1.5rem 1.5rem 1.5rem !important;
+  background: rgba(0, 0, 0, 0.02);
 }
 
-/* Card content improvements */
-.v-card-text {
-  padding: 20px !important;
+.operator-actions-card {
+  display: flex;
+  width: 100%;
+  gap: 0.5rem;
+  align-items: center;
 }
 
-.v-card-actions {
-  padding: 0 20px 20px 20px !important;
+.action-btn {
+  flex-shrink: 0;
+  border-width: 2px;
 }
 
-/* Header improvements */
-.text-h4 {
-  background: linear-gradient(45deg, #1976d2, #42a5f5);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.edit-btn {
+  color: var(--warm-orange);
+  border-color: var(--warm-orange);
 }
 
-/* Feature tags styling */
-.v-chip.v-chip--size-x-small {
-  height: 20px;
-  font-size: 10px;
+.delete-btn {
+  border-width: 2px;
 }
 
-/* Progress bar improvements */
-.v-progress-linear {
-  border-radius: 3px;
+.schedules-btn {
+  flex: 1;
+  background: var(--warm-orange) !important;
+  font-weight: 600;
 }
 
-/* Responsive adjustments */
-@media (max-width: 960px) {
+.manager-actions-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 0.75rem;
+}
+
+.manager-btn-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.manager-btn {
+  flex: 1;
+  font-weight: 500;
+}
+
+/* Dialog Styling */
+.dialog-header {
+  background: linear-gradient(135deg, var(--warm-orange) 0%, var(--warm-amber) 100%);
+  color: white;
+  padding: 1.5rem !important;
+}
+
+.dialog-header-content {
+  display: flex;
+  align-items: center;
+}
+
+.dialog-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.dialog-subtitle {
+  font-size: 1rem;
+  margin: 0.25rem 0 0 0;
+  opacity: 0.9;
+}
+
+.weight-description {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.weight-slider {
+  margin: 1rem 0;
+}
+
+.weight-display {
+  text-align: center;
+  font-size: 1.1rem;
+  color: #333;
+  margin-top: 1rem;
+}
+
+.weight-value {
+  color: var(--warm-orange);
+  font-size: 1.3rem;
+}
+
+.cancel-btn {
+  color: #666;
+}
+
+.save-btn,
+.generate-btn {
+  background: var(--warm-orange) !important;
+  font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .activities-header-content {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .header-actions {
+    width: 100%;
+  }
+
+  .operator-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .count-chip,
+  .create-btn {
+    width: 100%;
+  }
+
   .activity-card {
-    margin-bottom: 16px;
+    margin-bottom: 1.5rem;
+  }
+
+  .activities-title {
+    font-size: 2rem;
+  }
+
+  .card-content {
+    padding: 1rem !important;
+  }
+
+  .card-actions {
+    padding: 0 1rem 1rem 1rem !important;
+  }
+
+  .operator-actions-card {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .action-btn {
+    width: 100%;
+  }
+
+  .schedules-btn {
+    width: 100%;
+  }
+
+  .manager-btn-row {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .manager-btn {
+    width: 100%;
   }
 }
 
-/* Animation for card loading */
+/* Animation for cards */
 .activity-card {
   animation: fadeInUp 0.6s ease-out;
 }
@@ -714,28 +1045,25 @@ onMounted(fetchActivities);
   }
 }
 
-/* Gradient overlay for better text readability on images */
-.v-img::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0) 60%,
-    rgba(0, 0, 0, 0.3) 100%
-  );
-  pointer-events: none;
-}
+/* Custom scrollbar for mobile */
+@media (max-width: 768px) {
+  .feature-tags {
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--warm-orange) transparent;
+  }
 
-/* Enhanced button styling */
-.v-btn--variant-flat {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
+  .feature-tags::-webkit-scrollbar {
+    height: 4px;
+  }
 
-.v-btn--variant-outlined {
-  border-width: 1.5px;
+  .feature-tags::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .feature-tags::-webkit-scrollbar-thumb {
+    background: var(--warm-orange);
+    border-radius: 2px;
+  }
 }
 </style>

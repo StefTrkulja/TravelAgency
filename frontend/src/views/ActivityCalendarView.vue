@@ -1,111 +1,158 @@
 <template>
-  <v-container class="py-8">
-    <div class="d-flex align-center justify-space-between mb-6">
-      <h2 class="text-h5">Activity Schedule Calendar</h2>
-      
-      <div class="d-flex gap-2">
-        <!-- Calendar View Toggle -->
-        <v-btn-toggle v-model="viewMode" mandatory>
-          <v-btn value="month" size="small">Month</v-btn>
-          <v-btn value="week" size="small">Week</v-btn>
-          <v-btn value="day" size="small">Day</v-btn>
-        </v-btn-toggle>
+  <v-container class="calendar-container" fluid>
+    <!-- Header Section with Warm Gradient -->
+    <div class="calendar-header">
+      <div class="calendar-header-content">
+        <div class="header-main">
+          <div class="header-icon">
+            <v-icon size="48" color="white">mdi-calendar-month</v-icon>
+          </div>
+          <div>
+            <h1 class="calendar-title font-heading">Activity Calendar</h1>
+            <p class="calendar-subtitle">Manage and view all activity schedules</p>
+          </div>
+        </div>
         
-        <!-- Refresh Button -->
-        <v-btn 
-          color="primary" 
-          variant="outlined"
-          prepend-icon="mdi-refresh"
-          @click="fetchSchedules"
-          :loading="loading"
-        >
-          Refresh
-        </v-btn>
+        <div class="header-actions">
+          <!-- Calendar View Toggle -->
+          <v-btn-toggle v-model="viewMode" mandatory class="view-toggle">
+            <v-btn value="month" size="small" class="toggle-btn">Month</v-btn>
+            <v-btn value="week" size="small" class="toggle-btn">Week</v-btn>
+            <v-btn value="day" size="small" class="toggle-btn">Day</v-btn>
+          </v-btn-toggle>
+          
+          <!-- Refresh Button -->
+          <v-btn 
+            color="white" 
+            variant="elevated"
+            prepend-icon="mdi-refresh"
+            @click="fetchSchedules"
+            :loading="loading"
+            class="refresh-btn"
+          >
+            Refresh
+          </v-btn>
+        </div>
       </div>
     </div>
 
-    <!-- Filters -->
-    <v-card class="mb-6 pa-4">
-      <v-row>
-        <v-col cols="12" md="3">
-          <v-select
-            v-model="filters.destinationId"
-            :items="destinations"
-            item-title="name"
-            item-value="id"
-            label="Filter by Destination"
-            clearable
-            @update:model-value="fetchSchedules"
-          />
-        </v-col>
-        <v-col cols="12" md="3">
-          <v-select
-            v-model="filters.arrangementId"
-            :items="arrangements"
-            item-title="title"
-            item-value="id"
-            label="Filter by Arrangement"
-            clearable
-            @update:model-value="fetchSchedules"
-          />
-        </v-col>
-        <v-col cols="12" md="3">
-          <v-text-field
-            v-model="filters.fromDate"
-            label="From Date"
-            type="date"
-            @update:model-value="fetchSchedules"
-          />
-        </v-col>
-        <v-col cols="12" md="3">
-          <v-text-field
-            v-model="filters.toDate"
-            label="To Date"
-            type="date"
-            @update:model-value="fetchSchedules"
-          />
-        </v-col>
-      </v-row>
-    </v-card>
+    <div class="main-content">
 
-    <!-- Calendar Navigation -->
-    <v-card class="mb-6 pa-4">
-      <div class="d-flex align-center justify-space-between">
-        <div class="d-flex align-center gap-2">
-          <v-btn
-            icon="mdi-chevron-left"
-            variant="text"
-            @click="previousPeriod"
-          />
-          <h3 class="text-h6">{{ formatPeriodTitle() }}</h3>
-          <v-btn
-            icon="mdi-chevron-right"
-            variant="text"
-            @click="nextPeriod"
-          />
-        </div>
-        
-        <v-btn
-          color="primary"
-          variant="outlined"
-          @click="goToToday"
-        >
-          Today
-        </v-btn>
-      </div>
-    </v-card>
+      <!-- Filters -->
+      <v-card class="modern-card filters-card">
+        <v-card-text class="pa-6">
+          <div class="filters-header">
+            <v-icon color="primary" size="24">mdi-filter-variant</v-icon>
+            <h3 class="filters-title">Filters</h3>
+          </div>
+          
+          <v-row class="filters-row">
+            <v-col cols="12" md="3">
+              <v-select
+                v-model="filters.destinationId"
+                :items="destinations"
+                item-title="name"
+                item-value="id"
+                label="Filter by Destination"
+                variant="outlined"
+                density="comfortable"
+                prepend-inner-icon="mdi-map-marker"
+                clearable
+                class="filter-field"
+                @update:model-value="fetchSchedules"
+              />
+            </v-col>
+            <v-col cols="12" md="3">
+              <v-select
+                v-model="filters.arrangementId"
+                :items="arrangements"
+                item-title="title"
+                item-value="id"
+                label="Filter by Arrangement"
+                variant="outlined"
+                density="comfortable"
+                prepend-inner-icon="mdi-package-variant"
+                clearable
+                class="filter-field"
+                @update:model-value="fetchSchedules"
+              />
+            </v-col>
+            <v-col cols="12" md="3">
+              <v-text-field
+                v-model="filters.fromDate"
+                label="From Date"
+                type="date"
+                variant="outlined"
+                density="comfortable"
+                prepend-inner-icon="mdi-calendar-start"
+                class="filter-field"
+                @update:model-value="fetchSchedules"
+              />
+            </v-col>
+            <v-col cols="12" md="3">
+              <v-text-field
+                v-model="filters.toDate"
+                label="To Date"
+                type="date"
+                variant="outlined"
+                density="comfortable"
+                prepend-inner-icon="mdi-calendar-end"
+                class="filter-field"
+                @update:model-value="fetchSchedules"
+              />
+            </v-col>
+          </v-row>
+        </v-card-text>
+      </v-card>
 
-    <!-- Loading -->
-    <v-progress-linear v-if="loading" indeterminate class="mb-4" />
+      <!-- Calendar Navigation -->
+      <v-card class="modern-card navigation-card">
+        <v-card-text class="pa-6">
+          <div class="navigation-content">
+            <div class="navigation-controls">
+              <v-btn
+                icon="mdi-chevron-left"
+                variant="text"
+                color="primary"
+                size="large"
+                class="nav-btn"
+                @click="previousPeriod"
+              />
+              <h3 class="period-title">{{ formatPeriodTitle() }}</h3>
+              <v-btn
+                icon="mdi-chevron-right"
+                variant="text"
+                color="primary"
+                size="large"
+                class="nav-btn"
+                @click="nextPeriod"
+              />
+            </div>
+            
+            <v-btn
+              color="primary"
+              variant="elevated"
+              class="today-btn"
+              @click="goToToday"
+            >
+              Today
+            </v-btn>
+          </div>
+        </v-card-text>
+      </v-card>
 
-    <!-- Error -->
-    <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
-      {{ error }}
-    </v-alert>
+      <!-- Loading -->
+      <v-progress-linear v-if="loading" indeterminate class="loading-bar" color="primary" height="6" rounded />
 
-    <!-- Calendar Grid -->
-    <v-card class="pa-4">
-      <!-- Month View -->
+      <!-- Error -->
+      <v-alert v-if="error" type="error" variant="tonal" class="modern-alert">
+        <strong>Error:</strong> {{ error }}
+      </v-alert>
+
+      <!-- Calendar Grid -->
+      <v-card class="modern-card calendar-card">
+        <v-card-text class="pa-6">
+          <!-- Month View -->
       <div v-if="viewMode === 'month'" class="calendar-month">
         <!-- Month Header -->
         <div class="calendar-header">
@@ -234,21 +281,27 @@
           </v-timeline>
         </div>
       </div>
-    </v-card>
+        </v-card-text>
+      </v-card>
 
     <!-- Activity Details Dialog -->
     <v-dialog v-model="activityDialog.open" max-width="800">
-      <v-card v-if="activityDialog.activity">
-        <v-card-title>
-          <div class="d-flex align-center justify-space-between">
-            <span>{{ activityDialog.activity.activityName }}</span>
-            <v-chip
-              :color="getActivityColor(activityDialog.activity)"
-              variant="flat"
-            >
-              {{ getActivityStatus(activityDialog.activity) }}
-            </v-chip>
+      <v-card v-if="activityDialog.activity" class="modern-card">
+        <v-card-title class="dialog-header">
+          <div class="dialog-header-content">
+            <v-icon class="mr-3" color="primary" size="32">mdi-calendar-clock</v-icon>
+            <div>
+              <h3 class="dialog-title">{{ activityDialog.activity.activityName }}</h3>
+              <p class="dialog-subtitle">Activity Schedule Details</p>
+            </div>
           </div>
+          <v-chip
+            :color="getActivityColor(activityDialog.activity)"
+            variant="flat"
+            class="status-chip"
+          >
+            {{ getActivityStatus(activityDialog.activity) }}
+          </v-chip>
         </v-card-title>
         
         <v-card-text>
@@ -348,6 +401,7 @@
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000">
       {{ snackbar.message }}
     </v-snackbar>
+    </div>
   </v-container>
 </template>
 
@@ -757,23 +811,232 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.calendar-container {
+  background: var(--warm-bg);
+  min-height: 100vh;
+  padding: 0 !important;
+}
+
+/* Header Section */
+.calendar-header {
+  background: var(--warm-gradient);
+  padding: 2rem;
+  margin: -24px -24px 2rem -24px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="rgba(255,255,255,0.05)" fill-opacity="0.4"><circle cx="30" cy="30" r="2"/></g></svg>') repeat;
+    opacity: 0.3;
+  }
+}
+
+.calendar-header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 1;
+}
+
+.header-main {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.header-icon {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.calendar-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.calendar-subtitle {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  margin: 0.5rem 0 0 0;
+  font-weight: 400;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.view-toggle {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.toggle-btn {
+  color: var(--warm-orange) !important;
+  font-weight: 600 !important;
+}
+
+.toggle-btn.v-btn--selected {
+  background: var(--warm-orange) !important;
+  color: white !important;
+}
+
+.refresh-btn {
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: var(--warm-orange) !important;
+  font-weight: 600 !important;
+}
+
+/* Main Content */
+.main-content {
+  padding: 0 2rem 2rem 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Modern Cards */
+.modern-card {
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(245, 158, 11, 0.1) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 4px 20px rgba(212, 115, 10, 0.1) !important;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease !important;
+  
+  &:hover {
+    box-shadow: 0 8px 32px rgba(212, 115, 10, 0.15) !important;
+  }
+}
+
+/* Filters Card */
+.filters-card {
+  margin-bottom: 1.5rem;
+}
+
+.filters-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.filters-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--warm-orange);
+  margin: 0;
+}
+
+.filters-row {
+  margin: 0;
+}
+
+.filter-field {
+  :deep(.v-field) {
+    border-radius: 12px !important;
+    box-shadow: 0 2px 8px rgba(212, 115, 10, 0.06) !important;
+  }
+  
+  :deep(.v-field--focused) {
+    box-shadow: 0 4px 16px rgba(212, 115, 10, 0.12) !important;
+  }
+}
+
+/* Navigation Card */
+.navigation-card {
+  margin-bottom: 1.5rem;
+}
+
+.navigation-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navigation-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.period-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--warm-orange);
+  margin: 0;
+  min-width: 200px;
+  text-align: center;
+}
+
+.nav-btn {
+  color: var(--warm-orange) !important;
+}
+
+.today-btn {
+  background: var(--warm-orange) !important;
+  font-weight: 600 !important;
+}
+
+/* Loading and Alert */
+.loading-bar {
+  margin-bottom: 1rem;
+  border-radius: 6px;
+}
+
+.modern-alert {
+  border-radius: 12px !important;
+  margin-bottom: 1rem;
+}
+
+/* Calendar Card */
+.calendar-card {
+  margin-bottom: 0;
+}
+
 /* Calendar Month View */
 .calendar-month {
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .calendar-header {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  background-color: #f5f5f5;
+  background: var(--warm-gradient);
+  color: white;
 }
 
 .calendar-day-header {
-  padding: 12px 8px;
+  padding: 1rem 0.5rem;
   text-align: center;
-  font-weight: bold;
-  border-right: 1px solid #e0e0e0;
+  font-weight: 700;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
 }
 
 .calendar-day-header:last-child {
@@ -787,10 +1050,12 @@ onMounted(async () => {
 
 .calendar-day {
   min-height: 120px;
-  border-right: 1px solid #e0e0e0;
-  border-bottom: 1px solid #e0e0e0;
-  padding: 4px;
+  border-right: 1px solid rgba(245, 158, 11, 0.1);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.1);
+  padding: 0.5rem;
   position: relative;
+  background: white;
+  transition: background-color 0.2s ease;
 }
 
 .calendar-day:nth-child(7n) {
@@ -803,16 +1068,18 @@ onMounted(async () => {
 }
 
 .calendar-day--today {
-  background-color: #e3f2fd;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(212, 115, 10, 0.1) 100%);
+  border: 2px solid var(--warm-orange);
 }
 
 .calendar-day--has-activities {
-  background-color: #f9f9f9;
+  background-color: rgba(245, 158, 11, 0.02);
 }
 
 .calendar-day-number {
-  font-weight: bold;
-  margin-bottom: 4px;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--warm-orange);
 }
 
 .calendar-activities {
@@ -820,39 +1087,45 @@ onMounted(async () => {
 }
 
 .calendar-activity {
-  margin-bottom: 2px;
-  padding: 2px 4px;
-  border-radius: 3px;
+  margin-bottom: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
 }
 
 .calendar-activity:hover {
-  opacity: 0.8;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .calendar-activity--green {
   background-color: #c8e6c9;
   color: #2e7d32;
+  border-color: #4caf50;
 }
 
 .calendar-activity--orange {
   background-color: #ffe0b2;
   color: #f57c00;
+  border-color: #ff9800;
 }
 
 .calendar-activity--red {
   background-color: #ffcdd2;
   color: #d32f2f;
+  border-color: #f44336;
 }
 
 .calendar-activity--grey {
   background-color: #f5f5f5;
   color: #757575;
+  border-color: #9e9e9e;
 }
 
 .activity-title {
-  font-weight: bold;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -861,35 +1134,40 @@ onMounted(async () => {
 .activity-time, .activity-meta {
   font-size: 0.7rem;
   opacity: 0.8;
+  margin-top: 0.125rem;
 }
 
 .activity-more {
   font-size: 0.7rem;
-  color: #666;
+  color: var(--warm-orange);
   font-style: italic;
+  font-weight: 600;
+  margin-top: 0.25rem;
 }
 
 /* Calendar Week View */
 .calendar-week {
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .week-header {
   display: grid;
   grid-template-columns: 80px repeat(7, 1fr);
-  background-color: #f5f5f5;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--warm-gradient);
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .time-column {
-  border-right: 1px solid #e0e0e0;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .week-day-header {
-  padding: 12px 8px;
+  padding: 1rem 0.5rem;
   text-align: center;
-  border-right: 1px solid #e0e0e0;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .week-day-header:last-child {
@@ -897,12 +1175,14 @@ onMounted(async () => {
 }
 
 .week-day-name {
-  font-weight: bold;
+  font-weight: 700;
+  font-size: 0.9rem;
 }
 
 .week-day-date {
-  font-size: 0.9rem;
-  color: #666;
+  font-size: 0.8rem;
+  opacity: 0.9;
+  margin-top: 0.25rem;
 }
 
 .week-grid {
@@ -918,16 +1198,17 @@ onMounted(async () => {
 }
 
 .time-label {
-  padding: 8px;
+  padding: 0.5rem;
   font-size: 0.8rem;
   color: #666;
   border-right: 1px solid #e0e0e0;
   text-align: center;
+  background: rgba(245, 158, 11, 0.02);
 }
 
 .week-day-column {
   border-right: 1px solid #e0e0e0;
-  padding: 2px;
+  padding: 0.25rem;
   position: relative;
 }
 
@@ -936,36 +1217,42 @@ onMounted(async () => {
 }
 
 .week-activity {
-  padding: 4px 6px;
-  border-radius: 3px;
-  margin-bottom: 2px;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 0.25rem;
   cursor: pointer;
   font-size: 0.75rem;
-  transition: opacity 0.2s;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
 }
 
 .week-activity:hover {
-  opacity: 0.8;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .week-activity--green {
   background-color: #c8e6c9;
   color: #2e7d32;
+  border-color: #4caf50;
 }
 
 .week-activity--orange {
   background-color: #ffe0b2;
   color: #f57c00;
+  border-color: #ff9800;
 }
 
 .week-activity--red {
   background-color: #ffcdd2;
   color: #d32f2f;
+  border-color: #f44336;
 }
 
 .week-activity--grey {
   background-color: #f5f5f5;
   color: #757575;
+  border-color: #9e9e9e;
 }
 
 .activity-arrangement {
@@ -975,7 +1262,7 @@ onMounted(async () => {
 
 .activity-participants {
   font-size: 0.7rem;
-  font-weight: bold;
+  font-weight: 600;
 }
 
 /* Day View */
@@ -988,27 +1275,70 @@ onMounted(async () => {
 .legend-color {
   width: 16px;
   height: 16px;
-  border-radius: 3px;
+  border-radius: 6px;
   flex-shrink: 0;
 }
 
 .legend-color--green {
   background-color: #c8e6c9;
+  border: 1px solid #4caf50;
 }
 
 .legend-color--orange {
   background-color: #ffe0b2;
+  border: 1px solid #ff9800;
 }
 
 .legend-color--red {
   background-color: #ffcdd2;
+  border: 1px solid #f44336;
 }
 
 .legend-color--grey {
   background-color: #f5f5f5;
+  border: 1px solid #9e9e9e;
 }
 
-/* Responsive */
+/* Responsive Design */
+@media (max-width: 960px) {
+  .calendar-header {
+    padding: 1.5rem 1rem;
+  }
+  
+  .calendar-header-content {
+    flex-direction: column;
+    gap: 1.5rem;
+    text-align: center;
+  }
+  
+  .header-main {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .header-icon {
+    width: 64px;
+    height: 64px;
+  }
+  
+  .calendar-title {
+    font-size: 2rem;
+  }
+  
+  .main-content {
+    padding: 0 1rem 1rem 1rem;
+  }
+  
+  .navigation-content {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .period-title {
+    font-size: 1.2rem;
+  }
+}
+
 @media (max-width: 768px) {
   .calendar-day {
     min-height: 80px;
@@ -1020,6 +1350,10 @@ onMounted(async () => {
   
   .activity-time, .activity-meta {
     display: none;
+  }
+  
+  .filters-row .v-col {
+    margin-bottom: 0.5rem;
   }
 }
 </style>

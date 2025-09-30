@@ -1,104 +1,118 @@
 <template>
-  <v-container class="py-8" fluid>
-    <!-- Header Section -->
-    <div class="d-flex align-center justify-space-between mb-8">
-      <div>
-        <h1 class="text-h4 font-weight-bold text-primary mb-2">
-          <v-icon class="mr-2" size="32">mdi-map-marker-star</v-icon>
-          Travel Activities
-        </h1>
-        <h2 class="text-h6 text-grey-darken-1">{{ arrangement?.title || 'Loading arrangement...' }}</h2>
-      </div>
-      
-      <div class="d-flex align-center ga-3">
-        <v-chip 
-          color="primary" 
-          variant="tonal" 
-          prepend-icon="mdi-counter"
-        >
-          {{ activities.length }} Available Activities
-        </v-chip>
+  <v-container class="activities-container" fluid>
+    <!-- Header Section with Warm Gradient -->
+    <div class="activities-header">
+      <div class="activities-header-content">
+        <div class="header-main">
+          <div class="header-icon">
+            <v-icon size="48" color="white">mdi-map-marker-star</v-icon>
+          </div>
+          <div>
+            <h1 class="activities-title font-heading">Travel Activities</h1>
+            <h2 class="activities-subtitle">{{ arrangement?.title || 'Loading arrangement...' }}</h2>
+          </div>
+        </div>
         
-        <v-chip 
-          v-if="bookings.length > 0"
-          color="success" 
-          variant="tonal" 
-          prepend-icon="mdi-bookmark-check"
-        >
-          {{ bookings.length }} Booked
-        </v-chip>
+        <div class="header-stats">
+          <v-chip 
+            color="white" 
+            variant="flat" 
+            prepend-icon="mdi-counter"
+            class="stats-chip"
+          >
+            {{ activities.length }} Available
+          </v-chip>
+          
+          <v-chip 
+            v-if="bookings.length > 0"
+            color="white" 
+            variant="flat" 
+            prepend-icon="mdi-bookmark-check"
+            class="stats-chip"
+          >
+            {{ bookings.length }} Booked
+          </v-chip>
+        </div>
       </div>
     </div>
 
-
     <!-- Arrangement Overview -->
-    <div v-if="arrangement" class="mb-8">
-      <v-card variant="elevated" elevation="2" class="overflow-hidden">
-        <v-card-text class="pa-6">
-          <div class="d-flex align-center mb-4">
-            <v-icon color="primary" class="mr-3" size="28">mdi-airplane</v-icon>
-            <h3 class="text-h5 font-weight-bold text-primary">{{ arrangement.title }}</h3>
+    <div v-if="arrangement" class="section-container">
+      <v-card class="modern-card arrangement-card" elevation="0">
+        <v-card-text class="pa-8">
+          <div class="section-header">
+            <v-icon color="primary" size="32">mdi-airplane</v-icon>
+            <h3 class="section-title">{{ arrangement.title }}</h3>
           </div>
           
-          <p class="text-body-1 mb-4 text-grey-darken-1">{{ arrangement.summary }}</p>
+          <p class="section-description">{{ arrangement.summary }}</p>
 
-          <v-row>
+          <v-row class="details-grid">
             <v-col cols="12" md="6">
-              <v-card variant="tonal" color="primary" class="pa-4 h-100">
-                <div class="text-h6 font-weight-bold mb-3 text-primary">
-                  <v-icon class="mr-2">mdi-calendar-range</v-icon>
-                  Travel Details
-                </div>
-                
-                <div class="mb-2">
-                  <v-icon size="16" class="mr-2" color="primary">mdi-calendar-start</v-icon>
-                  <strong>Departure:</strong> {{ formatDate(departure?.startDate) }}
-                </div>
-                <div class="mb-2">
-                  <v-icon size="16" class="mr-2" color="primary">mdi-calendar-end</v-icon>
-                  <strong>Return:</strong> {{ formatDate(departure?.endDate) }}
-                </div>
-                <div class="mb-2">
-                  <v-icon size="16" class="mr-2" color="primary">mdi-map-marker</v-icon>
-                  <strong>Destination:</strong> {{ arrangement.destination?.name }}
-                </div>
-                <div class="mb-2">
-                  <v-icon size="16" class="mr-2" color="primary">mdi-car</v-icon>
-                  <strong>Transport:</strong> {{ arrangement.transportType }}
-                </div>
-                <div>
-                  <v-icon size="16" class="mr-2" color="primary">mdi-bed</v-icon>
-                  <strong>Accommodation:</strong> {{ arrangement.accommodationType }}
-                </div>
+              <v-card class="detail-card travel-details" elevation="0">
+                <v-card-text class="pa-6">
+                  <div class="detail-header">
+                    <v-icon color="primary">mdi-calendar-range</v-icon>
+                    <h4 class="detail-title">Travel Details</h4>
+                  </div>
+                  
+                  <div class="detail-items">
+                    <div class="detail-item">
+                      <v-icon size="18" color="primary">mdi-calendar-start</v-icon>
+                      <span><strong>Departure:</strong> {{ formatDate(departure?.startDate) }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <v-icon size="18" color="primary">mdi-calendar-end</v-icon>
+                      <span><strong>Return:</strong> {{ formatDate(departure?.endDate) }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <v-icon size="18" color="primary">mdi-map-marker</v-icon>
+                      <span><strong>Destination:</strong> {{ arrangement.destination?.name }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <v-icon size="18" color="primary">mdi-car</v-icon>
+                      <span><strong>Transport:</strong> {{ arrangement.transportType }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <v-icon size="18" color="primary">mdi-bed</v-icon>
+                      <span><strong>Accommodation:</strong> {{ arrangement.accommodationType }}</span>
+                    </div>
+                  </div>
+                </v-card-text>
               </v-card>
             </v-col>
             
             <v-col cols="12" md="6">
-              <v-card variant="tonal" color="success" class="pa-4 h-100">
-                <div class="text-h6 font-weight-bold mb-3 text-success">
-                  <v-icon class="mr-2">mdi-bookmark-check</v-icon>
-                  Booking Information
-                </div>
-                
-                <div class="mb-2">
-                  <v-icon size="16" class="mr-2" color="success">mdi-calendar-clock</v-icon>
-                  <strong>Booked:</strong> {{ formatDate(booking.bookingDate) }}
-                </div>
-                <div class="mb-2">
-                  <v-icon size="16" class="mr-2" color="success">mdi-account-group</v-icon>
-                  <strong>Travelers:</strong> {{ booking.travelersCount }}
-                </div>
-                <div class="mb-2">
-                  <v-icon size="16" class="mr-2" color="success">mdi-check-circle</v-icon>
-                  <strong>Status:</strong>
-                  <v-chip size="small" :color="getBookingStatusColor(booking.status)" variant="flat" class="ml-1">
-                    {{ booking.status }}
-                  </v-chip>
-                </div>
-                <div>
-                  <v-icon size="16" class="mr-2" color="success">mdi-currency-eur</v-icon>
-                  <strong>Total:</strong> <span class="text-h6 font-weight-bold text-success">€{{ booking.grandTotal }}</span>
-                </div>
+              <v-card class="detail-card booking-details" elevation="0">
+                <v-card-text class="pa-6">
+                  <div class="detail-header">
+                    <v-icon color="success">mdi-bookmark-check</v-icon>
+                    <h4 class="detail-title">Booking Information</h4>
+                  </div>
+                  
+                  <div class="detail-items">
+                    <div class="detail-item">
+                      <v-icon size="18" color="success">mdi-calendar-clock</v-icon>
+                      <span><strong>Booked:</strong> {{ formatDate(booking.bookingDate) }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <v-icon size="18" color="success">mdi-account-group</v-icon>
+                      <span><strong>Travelers:</strong> {{ booking.travelersCount }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <v-icon size="18" color="success">mdi-check-circle</v-icon>
+                      <span><strong>Status:</strong></span>
+                      <v-chip size="small" :color="getBookingStatusColor(booking.status)" variant="flat" class="ml-2">
+                        {{ booking.status }}
+                      </v-chip>
+                    </div>
+                    <div class="detail-item">
+                      <v-icon size="18" color="success">mdi-currency-eur</v-icon>
+                      <span><strong>Total:</strong></span>
+                      <span class="price-highlight">€{{ booking.grandTotal }}</span>
+                    </div>
+                  </div>
+                </v-card-text>
               </v-card>
             </v-col>
           </v-row>
@@ -107,88 +121,82 @@
     </div>
 
     <!-- Recommended Activities Section -->
-    <div v-if="recommendedActivities.length > 0" class="mb-8">
-      <div class="d-flex align-center mb-6">
-        <v-icon color="orange" size="32" class="mr-3">mdi-star-circle</v-icon>
+    <div v-if="recommendedActivities.length > 0" class="section-container">
+      <div class="section-header-large">
+        <v-icon color="orange" size="36">mdi-star-circle</v-icon>
         <div>
-          <h3 class="text-h5 font-weight-bold text-orange">Recommended for You</h3>
-          <p class="text-body-2 text-grey-darken-1">Personalized activity suggestions based on your preferences</p>
+          <h3 class="section-title-large">Recommended for You</h3>
+          <p class="section-description">Personalized activity suggestions based on your preferences</p>
         </div>
       </div>
       
-      <v-row>
+      <v-row class="activities-grid">
         <v-col
           v-for="activity in recommendedActivities"
           :key="`rec-${activity.id}`"
-          cols="12" md="6"
+          cols="12" sm="6" lg="4" xl="3"
         >
           <v-card 
-            class="recommendation-card h-100"
-            variant="elevated"
-            elevation="4"
+            class="modern-card activity-card recommended-card"
+            elevation="0"
             hover
           >
-            <!-- Recommendation Badge -->
-            <div class="position-relative">
+            <div class="activity-image-container">
               <v-img
                 v-if="activity.imagePath"
                 :src="`http://localhost:3000/${activity.imagePath}`"
                 alt="Activity image"
-                height="200"
+                height="240"
                 cover
                 class="activity-image"
               />
               <div
                 v-else
-                class="d-flex align-center justify-center"
-                style="height: 200px; background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);"
+                class="activity-placeholder"
               >
                 <v-icon size="64" color="orange-lighten-1">mdi-image-outline</v-icon>
               </div>
 
-              <!-- Recommendation Score Badge -->
-              <v-chip
-                color="orange"
-                variant="flat"
-                class="position-absolute font-weight-bold"
-                style="top: 12px; right: 12px;"
-                prepend-icon="mdi-star"
-              >
-                {{ activity.recommendationScore }}/100
-              </v-chip>
+              <div class="activity-badges">
+                <v-chip
+                  color="orange"
+                  variant="flat"
+                  class="recommendation-badge"
+                  prepend-icon="mdi-star"
+                >
+                  {{ activity.recommendationScore }}/100
+                </v-chip>
 
-              <!-- Price Badge -->
-              <v-chip
-                color="primary"
-                variant="flat"
-                class="position-absolute font-weight-bold"
-                style="bottom: 12px; left: 12px;"
-              >
-                ${{ activity.price }}
-              </v-chip>
+                <v-chip
+                  color="primary"
+                  variant="flat"
+                  class="price-badge"
+                >
+                  ${{ activity.price }}
+                </v-chip>
+              </div>
             </div>
 
-            <v-card-text class="pa-4">
-              <div class="text-h6 font-weight-bold mb-2 text-primary">{{ activity.name }}</div>
-              <p class="text-body-2 text-grey-darken-1 mb-3">{{ activity.description }}</p>
+            <v-card-text class="pa-6">
+              <h4 class="activity-title">{{ activity.name }}</h4>
+              <p class="activity-description">{{ activity.description }}</p>
 
-              <!-- Recommendation Reasons -->
-              <div v-if="activity.recommendationReasons?.length" class="mb-4">
-                <div class="text-caption font-weight-medium mb-2 text-orange">Why we recommend this:</div>
-                <div class="d-flex flex-wrap ga-1">
+              <div v-if="activity.recommendationReasons?.length" class="recommendation-reasons">
+                <div class="reasons-label">Why we recommend this:</div>
+                <div class="reasons-chips">
                   <v-chip
                     v-for="reason in activity.recommendationReasons"
                     :key="reason"
-                    size="x-small"
+                    size="small"
                     variant="tonal"
                     color="orange"
+                    class="reason-chip"
                   >
                     {{ reason }}
                   </v-chip>
                 </div>
               </div>
 
-              <!-- Timeslot Selection -->
               <v-select
                 v-model="selectedSchedule[activity.id]"
                 :items="schedules[activity.id] || []"
@@ -196,23 +204,25 @@
                 item-value="id"
                 label="Select Timeslot"
                 variant="outlined"
-                density="compact"
+                density="comfortable"
                 prepend-inner-icon="mdi-clock-outline"
+                class="schedule-select"
               />
 
-              <!-- Remaining Spots -->
-              <div v-if="selectedSchedule[activity.id]" class="text-caption mb-3 text-success">
-                <v-icon size="14" class="mr-1">mdi-account-group</v-icon>
+              <div v-if="selectedSchedule[activity.id]" class="remaining-spots">
+                <v-icon size="16" color="success">mdi-account-group</v-icon>
                 {{ (schedules[activity.id].find(s => s.id === selectedSchedule[activity.id])?.remaining) ?? 'N/A' }} spots remaining
               </div>
             </v-card-text>
 
-            <v-card-actions class="pa-4 pt-0">
+            <v-card-actions class="pa-6 pt-0">
               <v-btn
                 color="orange"
                 variant="elevated"
                 block
+                size="large"
                 prepend-icon="mdi-star-plus"
+                class="action-btn recommended-btn"
                 @click="openBookingDialog(activity)"
               >
                 Book Recommended
@@ -224,47 +234,42 @@
     </div>
 
     <!-- All Activities Section -->
-    <div class="mb-8">
-      <div class="d-flex align-center justify-space-between mb-6">
-        <div class="d-flex align-center">
-          <v-icon color="primary" size="32" class="mr-3">mdi-map-marker-multiple</v-icon>
-          <div>
-            <h3 class="text-h5 font-weight-bold text-primary">All Activities</h3>
-            <p class="text-body-2 text-grey-darken-1">Discover all available activities for your destination</p>
-          </div>
+    <div class="section-container">
+      <div class="section-header-large">
+        <v-icon color="primary" size="36">mdi-map-marker-multiple</v-icon>
+        <div class="flex-grow-1">
+          <h3 class="section-title-large">All Activities</h3>
+          <p class="section-description">Discover all available activities for your destination</p>
         </div>
         
-        <div class="d-flex align-center ga-2">
-          <v-btn
-            :variant="showAll ? 'flat' : 'tonal'"
-            :color="showAll ? 'primary' : 'grey'"
-            @click="showAll = !showAll"
-            prepend-icon="mdi-eye"
-          >
-            {{ showAll ? 'Show Less' : 'Show All' }}
-          </v-btn>
-        </div>
+        <v-btn
+          :variant="showAll ? 'flat' : 'tonal'"
+          :color="showAll ? 'primary' : 'grey'"
+          @click="showAll = !showAll"
+          prepend-icon="mdi-eye"
+          class="toggle-btn"
+        >
+          {{ showAll ? 'Show Less' : 'Show All' }}
+        </v-btn>
       </div>
       
-      <v-row>
+      <v-row class="activities-grid">
         <v-col
           v-for="a in visibleActivities"
           :key="a.id"
-          cols="12" md="6"
+          cols="12" sm="6" lg="4" xl="3"
         >
           <v-card
-            class="activity-card h-100"
-            variant="elevated"
-            elevation="3"
+            class="modern-card activity-card"
+            elevation="0"
             hover
           >
-            <!-- Image Header -->
-            <div class="position-relative">
+            <div class="activity-image-container">
               <v-img
                 v-if="a.imagePath"
                 :src="`http://localhost:3000/${a.imagePath}`"
                 alt="Activity image"
-                height="200"
+                height="240"
                 cover
                 class="activity-image"
               >
@@ -276,92 +281,84 @@
               </v-img>
               <div
                 v-else
-                class="d-flex align-center justify-center activity-placeholder"
-                style="height: 200px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);"
+                class="activity-placeholder"
               >
                 <v-icon size="64" color="grey-lighten-1">mdi-image-outline</v-icon>
               </div>
 
-              <!-- Status Badge -->
-              <v-chip
-                :color="a.status === 'ACTIVE' ? 'success' : 'warning'"
-                variant="flat"
-                size="small"
-                class="position-absolute"
-                style="top: 12px; right: 12px;"
-              >
-                {{ a.status }}
-              </v-chip>
+              <div class="activity-badges">
+                <v-chip
+                  :color="a.status === 'ACTIVE' ? 'success' : 'warning'"
+                  variant="flat"
+                  size="small"
+                  class="status-badge"
+                >
+                  {{ a.status }}
+                </v-chip>
 
-              <!-- Price Badge -->
-              <v-chip
-                color="primary"
-                variant="flat"
-                class="position-absolute font-weight-bold"
-                style="bottom: 12px; left: 12px;"
-              >
-                ${{ a.price }}
-              </v-chip>
+                <v-chip
+                  color="primary"
+                  variant="flat"
+                  class="price-badge"
+                >
+                  ${{ a.price }}
+                </v-chip>
+              </div>
             </div>
 
-            <!-- Content -->
-            <v-card-text class="pa-4">
-              <div class="text-h6 font-weight-bold mb-2 text-primary">{{ a.name }}</div>
-              <p class="text-body-2 text-grey-darken-1 mb-3">{{ a.description }}</p>
+            <v-card-text class="pa-6">
+              <h4 class="activity-title">{{ a.name }}</h4>
+              <p class="activity-description">{{ a.description }}</p>
 
-              <!-- Activity Details -->
-              <div class="mb-4">
-                <v-row dense>
-                  <v-col cols="6">
-                    <div class="d-flex align-center mb-1">
-                      <v-icon size="16" class="mr-1" color="grey-darken-1">mdi-account-group</v-icon>
-                      <span class="text-caption">Max: {{ a.maxCapacity }}</span>
-                    </div>
-                  </v-col>
-                  <v-col cols="6">
-                    <div class="d-flex align-center mb-1">
-                      <v-icon size="16" class="mr-1" color="grey-darken-1">mdi-clock-outline</v-icon>
-                      <span class="text-caption">{{ a.lengthInMin || 60 }}min</span>
-                    </div>
-                  </v-col>
-                  <v-col cols="6" v-if="a.difficulty">
-                    <div class="d-flex align-center">
-                      <v-icon size="16" class="mr-1" color="grey-darken-1">mdi-speedometer</v-icon>
-                      <span class="text-caption">Level {{ a.difficulty }}/5</span>
-                    </div>
-                  </v-col>
-                </v-row>
+              <div class="activity-details">
+                <div class="detail-row">
+                  <div class="detail-item-inline">
+                    <v-icon size="16" color="grey-darken-1">mdi-account-group</v-icon>
+                    <span>Max: {{ a.maxCapacity }}</span>
+                  </div>
+                  <div class="detail-item-inline">
+                    <v-icon size="16" color="grey-darken-1">mdi-clock-outline</v-icon>
+                    <span>{{ a.lengthInMin || 60 }}min</span>
+                  </div>
+                </div>
+                <div class="detail-row" v-if="a.difficulty">
+                  <div class="detail-item-inline">
+                    <v-icon size="16" color="grey-darken-1">mdi-speedometer</v-icon>
+                    <span>Level {{ a.difficulty }}/5</span>
+                  </div>
+                </div>
               </div>
 
-              <!-- Feature Tags -->
-              <div class="d-flex flex-wrap ga-1 mb-4">
+              <div class="feature-tags">
                 <v-chip
                   v-if="a.isPetFriendly"
-                  size="x-small"
+                  size="small"
                   color="green"
                   variant="tonal"
+                  class="feature-chip"
                 >
                   Pet Friendly
                 </v-chip>
                 <v-chip
                   v-if="a.isAdventurous"
-                  size="x-small"
+                  size="small"
                   color="orange"
                   variant="tonal"
+                  class="feature-chip"
                 >
                   Adventure
                 </v-chip>
                 <v-chip
                   v-if="a.isBusiness"
-                  size="x-small"
+                  size="small"
                   color="blue"
                   variant="tonal"
+                  class="feature-chip"
                 >
                   Business
                 </v-chip>
               </div>
 
-              <!-- Timeslot Selection -->
               <v-select
                 v-model="selectedSchedule[a.id]"
                 :items="schedules[a.id] || []"
@@ -369,24 +366,25 @@
                 item-value="id"
                 label="Select Timeslot"
                 variant="outlined"
-                density="compact"
+                density="comfortable"
                 prepend-inner-icon="mdi-clock-outline"
+                class="schedule-select"
               />
 
-              <!-- Remaining Spots -->
-              <div v-if="selectedSchedule[a.id]" class="text-caption mb-3 text-success">
-                <v-icon size="14" class="mr-1">mdi-account-group</v-icon>
+              <div v-if="selectedSchedule[a.id]" class="remaining-spots">
+                <v-icon size="16" color="success">mdi-account-group</v-icon>
                 {{ (schedules[a.id].find(s => s.id === selectedSchedule[a.id])?.remaining) ?? 'N/A' }} spots remaining
               </div>
             </v-card-text>
 
-            <!-- Action Buttons -->
-            <v-card-actions class="pa-4 pt-0">
+            <v-card-actions class="pa-6 pt-0">
               <v-btn
                 color="primary"
                 variant="elevated"
                 block
+                size="large"
                 prepend-icon="mdi-calendar-plus"
+                class="action-btn"
                 @click="openBookingDialog(a)"
               >
                 Book Activity
@@ -399,93 +397,95 @@
 
     <!-- Show/Hide toggle for large lists -->
     <div v-if="activities.length > 6" class="text-center mb-8">
-      <v-btn variant="tonal" @click="showAll = !showAll">
+      <v-btn 
+        variant="tonal" 
+        color="primary"
+        size="large"
+        @click="showAll = !showAll"
+        class="toggle-btn-large"
+      >
         {{ showAll ? 'Show Less Activities' : `Show All ${activities.length} Activities` }}
       </v-btn>
     </div>
 
     <!-- Booked Activities Section -->
-    <div class="mb-8">
-      <div class="d-flex align-center mb-6">
-        <v-icon color="success" size="32" class="mr-3">mdi-bookmark-check</v-icon>
+    <div class="section-container">
+      <div class="section-header-large">
+        <v-icon color="success" size="36">mdi-bookmark-check</v-icon>
         <div>
-          <h3 class="text-h5 font-weight-bold text-success">Your Booked Activities</h3>
-          <p class="text-body-2 text-grey-darken-1">Manage your activity bookings and share your experiences</p>
+          <h3 class="section-title-large">Your Booked Activities</h3>
+          <p class="section-description">Manage your activity bookings and share your experiences</p>
         </div>
       </div>
       
-      <v-alert v-if="bookings.length === 0" type="info" variant="tonal" class="mb-6" prominent>
+      <v-alert v-if="bookings.length === 0" type="info" variant="tonal" class="modern-alert" prominent>
         <template v-slot:prepend>
           <v-icon>mdi-information</v-icon>
         </template>
-        No booked activities yet. Start exploring the activities above to book your first adventure!
+        <strong>No booked activities yet.</strong> Start exploring the activities above to book your first adventure!
       </v-alert>
       
-      <v-row>
+      <v-row class="bookings-grid">
         <v-col
           v-for="b in bookings"
           :key="b.id"
           cols="12"
         >
           <v-card
-            class="booking-card"
-            variant="elevated"
-            elevation="3"
+            class="modern-card booking-card"
+            elevation="0"
             hover
           >
-            <v-card-text class="pa-6">
-              <!-- Header with activity name and status -->
-              <div class="d-flex align-center justify-space-between mb-4">
-                <div class="flex-grow-1">
-                  <div class="d-flex align-center mb-2">
-                    <v-icon color="primary" class="mr-2">mdi-calendar-check</v-icon>
-                    <h4 class="text-h6 font-weight-bold text-primary">
+            <v-card-text class="pa-8">
+              <div class="booking-header">
+                <div class="booking-main-info">
+                  <div class="booking-title-row">
+                    <v-icon color="primary" size="24">mdi-calendar-check</v-icon>
+                    <h4 class="booking-activity-title">
                       {{ b.activitySchedule?.activity?.name }}
                     </h4>
                   </div>
                   
-                  <div class="d-flex align-center text-grey-darken-1 mb-2">
-                    <v-icon size="16" class="mr-1">mdi-clock-outline</v-icon>
-                    <span class="text-body-2">
+                  <div class="booking-time">
+                    <v-icon size="16" color="grey-darken-1">mdi-clock-outline</v-icon>
+                    <span>
                       {{ formatDate(b.activitySchedule?.startTime) }} → {{ formatDate(b.activitySchedule?.endTime) }}
                     </span>
                   </div>
                   
-                  <!-- Booking details with icons -->
-                  <div class="d-flex align-center ga-4 mb-2">
-                    <div class="d-flex align-center">
-                      <v-icon size="16" class="mr-1" color="grey-darken-1">mdi-account-group</v-icon>
-                      <span class="text-body-2"><strong>{{ b.numberOfParticipants }}</strong> participants</span>
+                  <div class="booking-details-row">
+                    <div class="booking-detail">
+                      <v-icon size="16" color="grey-darken-1">mdi-account-group</v-icon>
+                      <strong>{{ b.numberOfParticipants }}</strong> participants
                     </div>
-                    <div class="d-flex align-center">
-                      <v-icon size="16" class="mr-1" color="grey-darken-1">mdi-currency-eur</v-icon>
-                      <span class="text-body-2"><strong>${{ b.totalPrice }}</strong></span>
+                    <div class="booking-detail">
+                      <v-icon size="16" color="grey-darken-1">mdi-currency-eur</v-icon>
+                      <strong>${{ b.totalPrice }}</strong>
                     </div>
                   </div>
                   
-                  <!-- Cancelled status -->
                   <v-alert
                     v-if="b.isCancelled"
                     type="error"
                     variant="tonal"
                     density="compact"
-                    class="mt-2"
+                    class="mt-4 cancellation-alert"
                   >
                     <template v-slot:prepend>
                       <v-icon>mdi-cancel</v-icon>
                     </template>
-                    Cancelled: {{ b.cancellationReason }}
+                    <strong>Cancelled:</strong> {{ b.cancellationReason }}
                   </v-alert>
                 </div>
                 
-                <!-- Action buttons -->
-                <div class="d-flex flex-column ga-2">
+                <div class="booking-actions">
                   <v-btn 
                     v-if="new Date(b.activitySchedule?.endTime) >= new Date()"
                     size="small" 
                     variant="outlined" 
                     color="primary"
                     prepend-icon="mdi-pencil"
+                    class="action-btn-small"
                     @click="editBooking(b)"
                   >
                     Edit
@@ -496,6 +496,7 @@
                     variant="outlined" 
                     color="error"
                     prepend-icon="mdi-cancel"
+                    class="action-btn-small"
                     @click="openCancelDialog(b)"
                   >
                     Cancel
@@ -506,6 +507,7 @@
                     variant="elevated"
                     color="primary"
                     prepend-icon="mdi-star-plus"
+                    class="action-btn-small"
                     @click="openReviewDialog(b)"
                   >
                     Add Review
@@ -514,152 +516,137 @@
               </div>
 
               <!-- User's Review Section -->
-              <div v-if="b.review" class="mt-4">
-                <v-divider class="mb-4" />
-                <v-card variant="tonal" color="success" class="pa-4">
-                  <div class="d-flex align-center justify-space-between mb-3">
-                    <div class="d-flex align-center">
-                      <v-icon color="success" class="mr-2">mdi-star-circle</v-icon>
-                      <h5 class="text-h6 font-weight-bold text-success">Your Review</h5>
+              <div v-if="b.review" class="review-section">
+                <v-divider class="my-6" />
+                <v-card class="review-card" elevation="0">
+                  <v-card-text class="pa-6">
+                    <div class="review-header">
+                      <div class="review-header-left">
+                        <v-icon color="success" size="24">mdi-star-circle</v-icon>
+                        <h5 class="review-title">Your Review</h5>
+                      </div>
+                      
+                      <div class="review-actions">
+                        <v-btn 
+                          size="small" 
+                          variant="text" 
+                          color="success"
+                          prepend-icon="mdi-pencil"
+                          class="action-btn-small"
+                          @click="openReviewDialog(b, 'edit')"
+                        >
+                          Edit
+                        </v-btn>
+                        <v-btn 
+                          size="small" 
+                          variant="text" 
+                          color="error"
+                          prepend-icon="mdi-delete"
+                          class="action-btn-small"
+                          @click="deleteReview(b)"
+                        >
+                          Delete
+                        </v-btn>
+                      </div>
                     </div>
-                    
-                    <div class="d-flex ga-2">
-                      <v-btn 
-                        size="small" 
-                        variant="text" 
+
+                    <div class="overall-rating">
+                      <v-rating
+                        :model-value="b.review.overallRating"
+                        readonly
                         color="success"
-                        prepend-icon="mdi-pencil"
-                        @click="openReviewDialog(b, 'edit')"
-                      >
-                        Edit
-                      </v-btn>
-                      <v-btn 
-                        size="small" 
-                        variant="text" 
-                        color="error"
-                        prepend-icon="mdi-delete"
-                        @click="deleteReview(b)"
-                      >
-                        Delete
-                      </v-btn>
+                        size="28"
+                        class="rating-stars"
+                      />
+                      <div class="rating-score">
+                        <div class="score-number">{{ b.review.overallRating }}/5</div>
+                        <div class="score-label">Overall Rating</div>
+                      </div>
                     </div>
-                  </div>
 
-                  <!-- Overall rating prominently displayed -->
-                  <div class="d-flex align-center mb-4">
-                    <v-rating
-                      :model-value="b.review.overallRating"
-                      readonly
-                      color="success"
-                      size="24"
-                      class="mr-3"
-                    />
-                    <div>
-                      <div class="text-h5 font-weight-bold text-success">{{ b.review.overallRating }}/5</div>
-                      <div class="text-caption">Overall Rating</div>
-                    </div>
-                  </div>
-
-                  <!-- Detailed ratings in a modern grid -->
-                  <v-row dense class="mb-3">
-                    <v-col cols="6" md="4">
-                      <div class="text-center pa-2">
-                        <div class="text-caption font-weight-medium mb-1">Organization</div>
+                    <div class="detailed-ratings">
+                      <div class="rating-item">
+                        <div class="rating-label">Organization</div>
                         <v-rating 
                           :model-value="b.review.organizationRating" 
                           readonly 
                           color="success"
-                          size="18" 
-                          class="justify-center"
+                          size="20" 
                         />
-                        <div class="text-caption mt-1">{{ b.review.organizationRating }}/5</div>
+                        <div class="rating-value">{{ b.review.organizationRating }}/5</div>
                       </div>
-                    </v-col>
-                    
-                    <v-col cols="6" md="4">
-                      <div class="text-center pa-2">
-                        <div class="text-caption font-weight-medium mb-1">Guide</div>
+                      
+                      <div class="rating-item">
+                        <div class="rating-label">Guide</div>
                         <v-rating 
                           :model-value="b.review.guideRating" 
                           readonly 
                           color="success"
-                          size="18" 
-                          class="justify-center"
+                          size="20"
                         />
-                        <div class="text-caption mt-1">{{ b.review.guideRating }}/5</div>
+                        <div class="rating-value">{{ b.review.guideRating }}/5</div>
                       </div>
-                    </v-col>
-                    
-                    <v-col cols="6" md="4">
-                      <div class="text-center pa-2">
-                        <div class="text-caption font-weight-medium mb-1">Value</div>
+                      
+                      <div class="rating-item">
+                        <div class="rating-label">Value</div>
                         <v-rating 
                           :model-value="b.review.valueForMoneyRating" 
                           readonly 
                           color="success"
-                          size="18" 
-                          class="justify-center"
+                          size="20"
                         />
-                        <div class="text-caption mt-1">{{ b.review.valueForMoneyRating }}/5</div>
+                        <div class="rating-value">{{ b.review.valueForMoneyRating }}/5</div>
                       </div>
-                    </v-col>
-                    
-                    <v-col cols="6" md="4">
-                      <div class="text-center pa-2">
-                        <div class="text-caption font-weight-medium mb-1">Safety</div>
+                      
+                      <div class="rating-item">
+                        <div class="rating-label">Safety</div>
                         <v-rating 
                           :model-value="b.review.safetyRating" 
                           readonly 
                           color="success"
-                          size="18" 
-                          class="justify-center"
+                          size="20"
                         />
-                        <div class="text-caption mt-1">{{ b.review.safetyRating }}/5</div>
+                        <div class="rating-value">{{ b.review.safetyRating }}/5</div>
                       </div>
-                    </v-col>
-                    
-                    <v-col cols="6" md="4">
-                      <div class="text-center pa-2">
-                        <div class="text-caption font-weight-medium mb-1">Fun Factor</div>
+                      
+                      <div class="rating-item">
+                        <div class="rating-label">Fun Factor</div>
                         <v-rating 
                           :model-value="b.review.funRating" 
                           readonly 
                           color="success"
-                          size="18" 
-                          class="justify-center"
+                          size="20"
                         />
-                        <div class="text-caption mt-1">{{ b.review.funRating }}/5</div>
+                        <div class="rating-value">{{ b.review.funRating }}/5</div>
                       </div>
-                    </v-col>
-                    
-                    <v-col cols="6" md="4">
-                      <div class="text-center pa-2">
-                        <div class="text-caption font-weight-medium mb-1">Would Revisit</div>
+                      
+                      <div class="rating-item">
+                        <div class="rating-label">Would Revisit</div>
                         <v-chip 
                           :color="b.review.wouldRevisit ? 'success' : 'warning'"
                           variant="flat"
                           size="small"
                           :prepend-icon="b.review.wouldRevisit ? 'mdi-check' : 'mdi-close'"
+                          class="revisit-chip"
                         >
                           {{ b.review.wouldRevisit ? 'Yes' : 'No' }}
                         </v-chip>
                       </div>
-                    </v-col>
-                  </v-row>
+                    </div>
 
-                  <!-- Review comment -->
-                  <div v-if="b.review.comment" class="mt-3">
-                    <v-divider class="mb-3" />
-                    <div class="d-flex align-start">
-                      <v-icon color="success" class="mr-2 mt-1">mdi-comment-quote</v-icon>
-                      <div>
-                        <div class="text-caption font-weight-medium mb-1">Your Comment</div>
-                        <p class="text-body-2 font-italic">
-                          "{{ b.review.comment }}"
-                        </p>
+                    <div v-if="b.review.comment" class="review-comment">
+                      <v-divider class="mb-4" />
+                      <div class="comment-content">
+                        <v-icon color="success" size="20">mdi-comment-quote</v-icon>
+                        <div class="comment-text">
+                          <div class="comment-label">Your Comment</div>
+                          <p class="comment-body">
+                            "{{ b.review.comment }}"
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </v-card-text>
                 </v-card>
               </div>
             </v-card-text>
@@ -1128,7 +1115,7 @@ async function saveBooking(e) {
     const payload = {
       activity_schedule_id: bookingForm.scheduleId,
       numberOfParticipants: bookingForm.participants,
-      arrangement_booking_id: arrangement.value?.id || booking.value?.id,
+      arrangement_booking_id: booking.value?.id,
       petsIncluded: false,
       bookingDate: new Date().toISOString(),
       totalPrice: 50 * bookingForm.participants,
@@ -1270,7 +1257,7 @@ async function nextStep() {
     const payload = {
       activity_schedule_id: bookingForm.scheduleId,
       numberOfParticipants: bookingForm.participants,
-      arrangement_booking_id: arrangement.value?.id || booking.value?.id,
+      arrangement_booking_id: booking.value?.id,
       petsIncluded: false,
       bookingDate: new Date().toISOString(),
       totalPrice: 50 * bookingForm.participants,
@@ -1481,44 +1468,721 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.recommendation-card {
-  transition: all 0.3s ease;
-  border: 2px solid #ff9800;
-  background: linear-gradient(135deg, #fff9c4 0%, #ffeb3b 5%, #fff9c4 100%);
+.activities-container {
+  background: var(--warm-bg);
+  min-height: 100vh;
+  padding: 0 !important;
+  
+  /* Background pattern */
+  background-image: 
+    radial-gradient(circle at 30% 70%, rgba(245, 158, 11, 0.04) 0%, transparent 50%),
+    radial-gradient(circle at 70% 30%, rgba(212, 115, 10, 0.04) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.02) 0%, transparent 50%);
 }
 
-.recommendation-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(255, 152, 0, 0.3) !important;
+/* Header Section */
+.activities-header {
+  background: var(--warm-gradient);
+  padding: 48px 24px;
+  margin: 0 0 32px 0;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="rgba(255,255,255,0.05)" fill-opacity="0.4"><circle cx="30" cy="30" r="2"/></g></svg>') repeat;
+    opacity: 0.3;
+  }
+}
+
+.activities-header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 1;
+}
+
+.header-main {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.header-icon {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.activities-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.activities-subtitle {
+  font-size: 1.2rem;
+  opacity: 0.9;
+  margin: 8px 0 0 0;
+  font-weight: 400;
+}
+
+.header-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.stats-chip {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: white !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  font-weight: 600 !important;
+}
+
+/* Section Containers */
+.section-container {
+  max-width: 1200px;
+  margin: 0 auto 48px auto;
+  padding: 0 24px;
+}
+
+/* Modern Cards */
+.modern-card {
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(245, 158, 11, 0.1) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 8px 32px rgba(212, 115, 10, 0.12) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 48px rgba(212, 115, 10, 0.18) !important;
+  }
+}
+
+/* Section Headers */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.section-header-large {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.section-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--warm-orange);
+  margin: 0;
+  letter-spacing: 0.3px;
+}
+
+.section-title-large {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--warm-orange);
+  margin: 0;
+  letter-spacing: 0.3px;
+}
+
+.section-description {
+  color: rgba(28, 25, 23, 0.7);
+  font-size: 1rem;
+  margin: 8px 0 0 0;
+  font-weight: 400;
+}
+
+/* Arrangement Card Styling */
+.arrangement-card {
+  margin-bottom: 0 !important;
+}
+
+.details-grid {
+  margin-top: 32px;
+}
+
+.detail-card {
+  background: rgba(245, 158, 11, 0.03) !important;
+  border: 1px solid rgba(245, 158, 11, 0.1) !important;
+  border-radius: 16px !important;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: rgba(245, 158, 11, 0.06) !important;
+  }
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.detail-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--warm-orange);
+  margin: 0;
+}
+
+.detail-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.95rem;
+  
+  strong {
+    color: var(--warm-orange);
+  }
+}
+
+.price-highlight {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--warm-orange);
+  margin-left: 8px;
+}
+
+/* Activity Cards */
+.activities-grid {
+  gap: 24px;
+  margin: 0 !important;
+}
+
+.activities-grid .v-col {
+  display: flex;
+  padding: 0 12px !important;
 }
 
 .activity-card {
-  transition: all 0.3s ease;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
-.activity-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+/* Override Vuetify's default card margins */
+.activities-grid .v-card {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
 }
 
-.booking-card {
-  transition: all 0.3s ease;
+.activity-card .v-card {
+  height: 100%;
+  width: 100%;
+  flex: 1;
+  margin: 0 !important;
 }
 
-.booking-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+.recommended-card {
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.02) 0%, rgba(245, 158, 11, 0.02) 100%) !important;
+  border: 2px solid rgba(255, 152, 0, 0.2) !important;
+  
+  &:hover {
+    border-color: rgba(255, 152, 0, 0.4) !important;
+  }
+}
+
+.activity-image-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px 20px 0 0;
 }
 
 .activity-image {
-  transition: transform 0.3s ease;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .activity-card:hover .activity-image {
   transform: scale(1.05);
 }
 
-.text-orange {
-  color: #ff9800 !important;
+.activity-placeholder {
+  height: 240px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activity-badges {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.recommendation-badge,
+.price-badge,
+.status-badge {
+  font-weight: 700 !important;
+  letter-spacing: 0.3px !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.activity-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--warm-orange);
+  margin: 0 0 12px 0;
+  letter-spacing: 0.3px;
+}
+
+.activity-description {
+  color: rgba(28, 25, 23, 0.7);
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+/* Recommendation Reasons */
+.recommendation-reasons {
+  margin-bottom: 20px;
+}
+
+.reasons-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--warm-orange);
+  margin-bottom: 8px;
+}
+
+.reasons-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.reason-chip {
+  font-size: 0.8rem !important;
+}
+
+/* Activity Details */
+.activity-details {
+  margin-bottom: 20px;
+}
+
+.detail-row {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 8px;
+}
+
+.detail-item-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: rgba(28, 25, 23, 0.7);
+}
+
+/* Feature Tags */
+.feature-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.feature-chip {
+  font-size: 0.8rem !important;
+}
+
+/* Form Elements */
+.schedule-select {
+  margin-bottom: 12px;
+  
+  :deep(.v-field) {
+    border-radius: 12px !important;
+    box-shadow: 0 2px 8px rgba(212, 115, 10, 0.06) !important;
+  }
+  
+  :deep(.v-field--focused) {
+    box-shadow: 0 4px 16px rgba(212, 115, 10, 0.12) !important;
+  }
+}
+
+.remaining-spots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--warm-orange);
+  font-weight: 500;
+}
+
+/* Action Buttons */
+.action-btn {
+  border-radius: 16px !important;
+  height: 48px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px !important;
+  text-transform: none !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 16px rgba(212, 115, 10, 0.15) !important;
+  
+  &:hover:not(:disabled) {
+    box-shadow: 0 8px 24px rgba(212, 115, 10, 0.25) !important;
+    transform: translateY(-2px);
+  }
+}
+
+.recommended-btn {
+  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%) !important;
+}
+
+.action-btn-small {
+  border-radius: 12px !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.3px !important;
+}
+
+.toggle-btn,
+.toggle-btn-large {
+  border-radius: 16px !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.3px !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Booking Cards */
+.bookings-grid {
+  gap: 24px;
+}
+
+.booking-card {
+  border-left: 4px solid var(--warm-orange) !important;
+}
+
+.booking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.booking-main-info {
+  flex: 1;
+}
+
+.booking-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.booking-activity-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--warm-orange);
+  margin: 0;
+}
+
+.booking-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(28, 25, 23, 0.7);
+  margin-bottom: 16px;
+}
+
+.booking-details-row {
+  display: flex;
+  gap: 32px;
+  margin-bottom: 16px;
+}
+
+.booking-detail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  color: rgba(28, 25, 23, 0.7);
+}
+
+.booking-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 120px;
+}
+
+.cancellation-alert {
+  border-radius: 12px !important;
+}
+
+/* Review Section */
+.review-section {
+  margin-top: 32px;
+}
+
+.review-card {
+  background: rgba(16, 185, 129, 0.03) !important;
+  border: 1px solid rgba(16, 185, 129, 0.1) !important;
+  border-radius: 16px !important;
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.review-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.review-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #10B981;
+  margin: 0;
+}
+
+.review-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.overall-rating {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 32px;
+  padding: 20px;
+  background: rgba(16, 185, 129, 0.05);
+  border-radius: 16px;
+  border: 1px solid rgba(16, 185, 129, 0.1);
+}
+
+.rating-stars {
+  margin: 0;
+}
+
+.rating-score {
+  text-align: center;
+}
+
+.score-number {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #10B981;
+  line-height: 1;
+}
+
+.score-label {
+  font-size: 0.9rem;
+  color: rgba(28, 25, 23, 0.7);
+  margin-top: 4px;
+}
+
+.detailed-ratings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.rating-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: rgba(16, 185, 129, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(16, 185, 129, 0.08);
+}
+
+.rating-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(28, 25, 23, 0.8);
+  min-width: 80px;
+}
+
+.rating-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #10B981;
+  margin-left: 12px;
+}
+
+.revisit-chip {
+  margin-left: 12px !important;
+}
+
+.review-comment {
+  margin-top: 24px;
+}
+
+.comment-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.comment-text {
+  flex: 1;
+}
+
+.comment-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(28, 25, 23, 0.8);
+  margin-bottom: 8px;
+}
+
+.comment-body {
+  font-style: italic;
+  color: rgba(28, 25, 23, 0.7);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Modern Alert */
+.modern-alert {
+  border-radius: 16px !important;
+  box-shadow: 0 4px 16px rgba(33, 150, 243, 0.1) !important;
+  margin-bottom: 32px;
+}
+
+/* Responsive Design */
+@media (max-width: 960px) {
+  .activities-header {
+    padding: 32px 16px;
+  }
+  
+  .activities-header-content {
+    flex-direction: column;
+    gap: 24px;
+    text-align: center;
+  }
+  
+  .header-main {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .header-icon {
+    width: 64px;
+    height: 64px;
+  }
+  
+  .activities-title {
+    font-size: 2rem;
+  }
+  
+  .activities-subtitle {
+    font-size: 1.1rem;
+  }
+  
+  .section-container {
+    padding: 0 16px;
+  }
+  
+  .section-header-large {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .booking-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .booking-actions {
+    flex-direction: row;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    min-width: auto;
+  }
+  
+  .booking-details-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .detailed-ratings {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .overall-rating {
+    flex-direction: column;
+    text-align: center;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .activities-title {
+    font-size: 1.8rem;
+  }
+  
+  .section-title-large {
+    font-size: 1.6rem;
+  }
+  
+  .activity-title {
+    font-size: 1.2rem;
+  }
+  
+  .booking-activity-title {
+    font-size: 1.3rem;
+  }
+  
+  .detail-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .header-stats {
+    justify-content: center;
+  }
 }
 </style>
