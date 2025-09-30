@@ -1,4 +1,4 @@
-const { Booking, User, Departure } = require('../models');
+const { Booking, User, Departure, TravelArrangement } = require('../models');
 const { Result, StatusEnum } = require('../utils/result');
 
 class BookingService {
@@ -56,7 +56,7 @@ async getBookingsByUser(username) {
           model: Departure,
           as: 'departure',
           include: [
-            { model: sequelize.models.TravelArrangement, as: 'arrangement' }
+            { model: TravelArrangement, as: 'arrangement' }
           ]
         }
       ]

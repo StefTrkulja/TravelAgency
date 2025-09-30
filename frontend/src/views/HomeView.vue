@@ -5,6 +5,43 @@
     <v-toolbar-title>Travel Agency</v-toolbar-title>
     <v-spacer />
 
+    <!-- Navigation buttons for logged-in users -->
+    <div v-if="isLoggedIn" class="d-flex align-center ga-2 mr-4">
+      <!-- User bookings button -->
+      <v-btn 
+        v-if="store.role === 'user'" 
+        to="/traveler/bookings"
+        variant="elevated" 
+        color="secondary"
+        prepend-icon="mdi-bookmark"
+      >
+        My Bookings
+      </v-btn>
+      
+      <!-- Manager/Operator arrangements button -->
+      <v-btn 
+        v-if="store.role === 'manager' || store.role === 'MANAGER' || store.role === 'operator' || store.role === 'OPERATOR'" 
+        to="/arrangements"
+        variant="elevated" 
+        color="secondary"
+        prepend-icon="mdi-map"
+      >
+        Arrangements
+      </v-btn>
+      
+      <!-- Manager calendar button -->
+      <v-btn 
+        v-if="store.role === 'manager' || store.role === 'MANAGER'" 
+        to="/calendar"
+        variant="elevated" 
+        color="secondary"
+        prepend-icon="mdi-calendar-month"
+        class="ml-2"
+      >
+        Calendar
+      </v-btn>
+    </div>
+
     <div v-if="isLoggedIn" class="mr-4">
       <v-chip label>{{ store.username }}</v-chip>
       <v-chip label class="ml-2" color="secondary">{{ store.role }}</v-chip>
@@ -33,9 +70,10 @@
         <v-list-item to="/sup/inbox" prepend-icon="mdi-inbox" title="Zahtevi/Upiti" />
       </template>
 
-      <template v-else-if="store.role==='manager'">
+      <template v-else-if="store.role==='manager' || store.role==='MANAGER'">
         <!-- <v-list-item to="/mgr/approvals" prepend-icon="mdi-check-decagram" title="Odobrenja" />
         <v-list-item to="/analytics" prepend-icon="mdi-chart-line" title="Analitika" /> -->
+        <v-list-item to="/arrangements" prepend-icon="mdi-map" title="Arrangements" />
         <v-list-item to="/calendar" prepend-icon="mdi-calendar-month" title="Activity Calendar" />
       </template>
 
@@ -93,10 +131,11 @@
       <v-col cols="12" md="6"><v-card class="pa-4" to="/sup/inbox" title="Zahtevi/Upiti" subtitle="Odgovori i pošalji ponudu" /></v-col>
     </v-row>
 
-    <v-row v-else-if="store.role==='MANAGER'">
-      <v-col cols="12" md="4"><v-card class="pa-4" to="/mgr/approvals" title="Odobrenja" subtitle="Pregled i odluka" /></v-col>
-      <v-col cols="12" md="4"><v-card class="pa-4" to="/analytics" title="Analitika" subtitle="KPIs" /></v-col>
-      <v-col cols="12" md="4"><v-card class="pa-4" to="/calendar" title="Activity Calendar" subtitle="Schedule Management" /></v-col>
+    <v-row v-else-if="store.role==='MANAGER' || store.role==='manager'">
+      <v-col cols="12" md="3"><v-card class="pa-4" to="/mgr/approvals" title="Odobrenja" subtitle="Pregled i odluka" /></v-col>
+      <v-col cols="12" md="3"><v-card class="pa-4" to="/analytics" title="Analitika" subtitle="KPIs" /></v-col>
+      <v-col cols="12" md="3"><v-card class="pa-4" to="/arrangements" title="Arrangements" subtitle="Travel Management" /></v-col>
+      <v-col cols="12" md="3"><v-card class="pa-4" to="/calendar" title="Activity Calendar" subtitle="Schedule Management" /></v-col>
     </v-row>
 
     <v-row v-else-if="store.role==='ADMIN'">

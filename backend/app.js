@@ -36,6 +36,7 @@ const analyticsRoute = require('./routes/activityAnalyticsRoute');
 const activityRecommendationsRoute = require('./routes/activityRecommendationsRoute');
 const bookingRoute = require('./routes/bookingRoute');
 const calendarRoute = require('./routes/calendarRoute');
+const travelArrangementRoute = require('./routes/travelArrangementRoute');
 
 
 const app = express();
@@ -75,6 +76,7 @@ app.use('/api/anjaArrangements', arrangementAnjaRoute);
 app.use('/api/vouchers',voucherRoute);
 app.use('/api/reviews',reviewRoute);
 app.use('/api/bookings', bookingRoute);
+app.use('/api/travel-arrangements', travelArrangementRoute);
 
 //app.use('/api/arrangement', require('./routes/arrangements.routes'));
 // app.use('/api/post', postRoute);
