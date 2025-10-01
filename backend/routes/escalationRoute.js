@@ -5,6 +5,7 @@ const router = express.Router();
 const ComplaintService = require('../services/complaintService');
 const EscalationService = require('../services/escalationService');
 const EscalationMessageService = require('../services/escalationMessageService');
+const sequelize = require('../models/index').sequelize;
 
 
 router.get('/manager-escalations', jwtParser.extractTokenUser, async (req, res) => {
@@ -26,19 +27,43 @@ router.get('/manager-escalations', jwtParser.extractTokenUser, async (req, res) 
 router.post('/:id/escalate', jwtParser.extractTokenUser, async (req, res) => {
 	const ticketId = req.params.id;
 	const user = req.user;
-  const note = 'Escalated to manager for review';
+	const note = 'Escalated to manager for review';
 	const toCode = 'ESCALATED';
-	const complaintResult = ComplaintService.transition(ticketId, 'ESCALATED', user.username,note);
+	
+	try {
+		// Proveriti da li ticket već eskaliran
+		const existingEscalation = await EscalationService.getEscalationByTicketId(ticketId);
+		if (existingEscalation.status === StatusEnum.SUCCESS) {
+			return res.status(409).json({
+				status: StatusEnum.FAIL,
+				message: 'Ticket je već eskaliran',
+				code: 409
+			});
+		}
+		
+		// Prvo promenimo status complaint-a
+		const complaintResult = await ComplaintService.transition(ticketId, 'ESCALATED', user.username, note);
+		
+		if (complaintResult.status !== StatusEnum.OK) {
+			return res.status(complaintResult.code).json(complaintResult);
+		}
 
-	const result = await EscalationService.createEscalation(ticketId, req.body.reason);
+		// Zatim kreiraj eskalaciju
+		const result = await EscalationService.createEscalation(ticketId, req.body.reason);
 
-	if (result.status === StatusEnum.SUCCESS) {
-		res.status(result.code).json(result);
-	} else {
-		res.status(result.code).json(result);
+		if (result.status === StatusEnum.SUCCESS) {
+			res.status(result.code).json(result);
+		} else {
+			res.status(result.code).json(result);
+		}
+	} catch (error) {
+		console.error('Error in escalation:', error);
+		return res.status(500).json({
+			status: StatusEnum.FAIL,
+			message: 'Internal server error during escalation',
+			code: 500
+		});
 	}
-
-
 });
 
 

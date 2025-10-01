@@ -235,6 +235,7 @@
         <template #item.actions="{ item }">
           <div class="row-actions">
             <v-btn 
+              v-if="!isStatusFinal(item)"
               variant="elevated" 
               size="small" 
               color="success"
@@ -245,6 +246,7 @@
               Approve
             </v-btn>
             <v-btn 
+              v-if="!isStatusFinal(item)"
               variant="outlined" 
               size="small" 
               color="error"
@@ -254,6 +256,18 @@
             >
               Reject
             </v-btn>
+            <v-chip 
+              v-if="isStatusFinal(item)"
+              size="small" 
+              variant="tonal"
+              class="status-final-chip"
+              :color="getStatusChipColor(item)"
+            >
+              <v-icon size="16" class="mr-1">
+                {{ getStatusIcon(item) }}
+              </v-icon>
+              {{ getStatusDisplayText(item) }}
+            </v-chip>
             <v-btn 
               variant="outlined" 
               size="small" 
@@ -484,6 +498,59 @@ export default {
         case 'REJECTED': return 'mdi-close-circle'
         default: return 'mdi-help-circle-outline'
       }
+    },
+
+    isStatusFinal(item) {
+      const statusName = item.statusName || item.status?.name || item.statusCode || ''
+      const statusCode = this.getStatusCode(item)
+      // Sakrij dugmad ako je status APPROVED ili REJECTED (finalni statusi)
+      return statusCode === 'APPROVED' || statusCode === 'REJECTED' || 
+             statusName.toUpperCase() === 'APPROVED' || statusName.toUpperCase() === 'REJECTED'
+    },
+
+    getStatusChipColor(item) {
+      const statusName = item.statusName || item.status?.name || item.statusCode || ''
+      const statusObj = item.status || { code: item.statusCode, name: item.statusName }
+      const statusCode = this.getStatusCode(statusObj)
+      
+      // Proverava statusCode prvo
+      if (statusCode === 'APPROVED') return 'success'
+      if (statusCode === 'REJECTED') return 'error'
+      
+      // Fallback na statusName
+      const nameUpper = statusName.toUpperCase()
+      if (nameUpper === 'APPROVED') return 'success'
+      if (nameUpper === 'REJECTED') return 'error'
+      
+      return 'grey'
+    },
+
+    getStatusDisplayText(item) {
+      // Pokušaj različite načine da dobijemo status
+      const statusName = item.statusName || item.status?.name || item.statusCode || ''
+      const statusObj = item.status || { code: item.statusCode, name: item.statusName }
+      const statusCode = this.getStatusCode(statusObj)
+      
+      console.log('Debug status for item:', {
+        itemId: item.id,
+        statusName,
+        statusCode,
+        rawStatus: item.status,
+        rawStatusName: item.statusName,
+        rawStatusCode: item.statusCode
+      })
+      
+      // Proverava statusCode prvo
+      if (statusCode === 'APPROVED') return 'Approved'
+      if (statusCode === 'REJECTED') return 'Rejected'
+      
+      // Fallback na statusName
+      const nameUpper = statusName.toUpperCase()
+      if (nameUpper === 'APPROVED') return 'Approved'
+      if (nameUpper === 'REJECTED') return 'Rejected'
+      
+      // Poslednji fallback
+      return statusName || 'Processed'
     },
 
     goTickets()        { this.$router.push({ name: 'ManagerTicketsView' }) },
@@ -783,6 +850,22 @@ export default {
     justify-content: flex-end;
     flex-wrap: nowrap;
     min-width: 220px;
+
+    .status-final-chip {
+      border-radius: 20px !important;
+      font-weight: 600 !important;
+      font-size: 0.75rem !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.5px !important;
+      pointer-events: none;
+      opacity: 0.8;
+
+      :deep(.v-chip__content) {
+        display: flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+      }
+    }
 
     .action-btn {
       border-radius: 8px !important;

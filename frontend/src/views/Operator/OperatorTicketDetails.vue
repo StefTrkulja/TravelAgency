@@ -49,17 +49,29 @@
 
                 <div class="detail-row">
                   <span class="detail-label">Status:</span>
-                  <v-chip 
-                    variant="tonal" 
-                    color="primary" 
-                    class="status-chip"
-                    :class="{ 'disabled-chip': isEscalated }"
-                    :title="isEscalated ? 'Ticket je eskaliran – status menja viši nivo' : 'Promeni status'"
-                    @click="onStatusChipClick"
-                  >
-                    <v-icon size="16" class="mr-1">mdi-flag-outline</v-icon>
-                    {{ ticket.statusName || ticket.status || '—' }}
-                  </v-chip>
+                  <div class="status-container">
+                    <v-chip 
+                      variant="tonal" 
+                      color="primary" 
+                      class="status-chip"
+                      :class="{ 'disabled-chip': isEscalated, 'escalated-chip': isEscalated }"
+                      :title="isEscalated ? 'Ticket je eskaliran – status menja viši nivo' : 'Promeni status'"
+                      @click="onStatusChipClick"
+                    >
+                      <v-icon size="16" class="mr-1">mdi-flag-outline</v-icon>
+                      {{ ticket.statusName || ticket.status || '—' }}
+                    </v-chip>
+                    <v-chip 
+                      v-if="isEscalated"
+                      size="small" 
+                      variant="tonal" 
+                      color="warning" 
+                      class="escalation-badge ml-2"
+                    >
+                      <v-icon size="14" class="mr-1">mdi-arrow-up-bold</v-icon>
+                      Escalated
+                    </v-chip>
+                  </div>
                 </div>
 
                 <div class="detail-row">
@@ -278,6 +290,8 @@
               class="action-btn" 
               @click="onEscalateClick"
               prepend-icon="mdi-arrow-up-bold"
+              :disabled="isEscalated"
+              :title="isEscalated ? 'Ticket je već eskaliran' : 'Eskalacija tiketa'"
             >
               Escalate
             </v-btn>
@@ -423,15 +437,13 @@ export default {
     isInProgress() { return this.ticket.status === 'IN_PROGRESS' },
     isWaitingInfo() { return this.ticket.status === 'WAITING_INFO' },
     isTerminal() { return this.ticket.status === 'CLOSED' || this.ticket.status === 'REJECTED' },
+    isEscalated() { return this.ticket.status === 'ESCALATED' },
   },
   watch: {
     activeTab() {
       // resetuj draft kada se promeni tab
       this.draft = ''
     }
-  },
-  methods: {
-    isEscalated() { return this.ticket.status === 'ESCALATED' },
   },
   created() {
     this.bootstrap()
@@ -510,20 +522,34 @@ export default {
       }
     },
     async handleEscalate({ ticketId, reason, files }) {
+      if (this.isEscalated) {
+        this.showWarn('Ticket je već eskaliran – nije moguće ponovo eskalirati.')
+        return
+      }
+      
       this.escalating = true
       try {
-
-        await axiosInstance.post(`/escalation/${ticketId}/escalate`, { reason })
-
-        // po tvojoj napomeni: "Kada se eskalira, ticket status ce automatski preci na escalated"
-        // odmah reflektuj u UI i osveži istoriju
-        this.ticket.status = 'ESCALATED'
-        this.ticket.statusName = 'Escalated'
-
-        await this.fetchHistory()
-        this.escalateDialog = false
+        const response = await axiosInstance.post(`/escalation/${ticketId}/escalate`, { reason })
+        
+        // Proverava da li je backend uspešno promenio status
+        if (response.status === 201) {
+          // Refreshuje podatke da bi dobio aktuelni status iz baze
+          await this.fetchTicket()
+          await this.fetchHistory()
+          await this.fetchManagerMessages()
+          
+          this.escalateDialog = false
+          this.showSuccess('Ticket je uspešno eskaliran!')
+        }
       } catch (e) {
         console.error('Escalate failed:', e)
+        if (e.response?.status === 400) {
+          this.showWarn('Greška prilikom eskalacije: ' + (e.response.data?.message || 'Neočekivana greška'))
+        } else if (e.response?.status === 409) {
+          this.showWarn('Ticket je već eskaliran ili se status ne može promeniti')
+        } else {
+          this.showWarn('Greška prilikom eskalacije. Pokušajte ponovo.')
+        }
       } finally {
         this.escalating = false
       }
@@ -559,27 +585,12 @@ export default {
       this.snackbar.show = true
     },
 
-    async handleEscalate({ ticketId, reason, files }) {
-      if (this.isEscalated) {
-        this.showWarn('Ticket je već eskaliran – nije moguće ponovo eskalirati.')
-        return
-      }
-      this.escalating = true
-      try {
-        await axiosInstance.post(`/escalation/${ticketId}/escalate`, { reason })
-
-        // odmah reflektuj promenу
-        this.ticket.status = 'ESCALATED'
-        this.ticket.statusName = 'Escalated'
-
-        await this.fetchHistory()
-        this.escalateDialog = false
-      } catch (e) {
-        console.error('Escalate failed:', e)
-      } finally {
-        this.escalating = false
-      }
+    showSuccess(msg) {
+      this.snackbar.text = msg
+      this.snackbar.color = 'success'
+      this.snackbar.show = true
     },
+
     scroll(dir) {
       const el = this.$refs.track; if (!el) return
       el.scrollBy({ left: dir * (el.clientWidth * 0.8), behavior: 'smooth' })
@@ -1085,6 +1096,13 @@ export default {
     color: var(--warm-text);
     font-weight: 500;
   }
+
+  .status-container {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
 }
 
 .case-id-chip {
@@ -1118,8 +1136,27 @@ export default {
     cursor: not-allowed !important;
   }
 
+  &.escalated-chip {
+    background: rgba(255, 152, 0, 0.1) !important;
+    color: #FF9800 !important;
+    border: 1px solid rgba(255, 152, 0, 0.3);
+  }
+
   .v-icon {
     margin-right: 4px;
+  }
+}
+
+.escalation-badge {
+  font-weight: 600;
+  border-radius: 6px;
+  background: rgba(255, 152, 0, 0.1) !important;
+  color: #FF9800 !important;
+  border: 1px solid rgba(255, 152, 0, 0.3);
+  animation: pulse 2s infinite;
+
+  .v-icon {
+    margin-right: 2px;
   }
 }
 
@@ -1521,10 +1558,17 @@ export default {
       font-weight: 500;
       transition: all 0.3s ease;
 
-      &:hover {
+      &:hover:not(:disabled) {
         background: rgba(212, 115, 10, 0.1);
         border-color: var(--warm-orange);
         
+      }
+
+      &:disabled {
+        border-color: rgba(212, 115, 10, 0.2);
+        color: rgba(212, 115, 10, 0.4);
+        background: rgba(212, 115, 10, 0.05);
+        cursor: not-allowed;
       }
 
       .v-icon {
@@ -1558,6 +1602,15 @@ export default {
         margin-right: 4px;
       }
     }
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
   }
 }
 

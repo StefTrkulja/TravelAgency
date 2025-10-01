@@ -10,6 +10,11 @@ const ComplaintService = require('./complaintService');
 class EscalationService {
  
 	async createEscalation(complaintId, reason) {
+		// Proverava da li već postoji eskalacija za ovaj complaint
+		const existingEscalation = await this.getEscalationByTicketId(complaintId);
+		if (existingEscalation.status === StatusEnum.SUCCESS) {
+			return new Result(StatusEnum.FAIL, 409, null, { message: 'Escalation already exists for this complaint' });
+		}
 		
 		const escalation = {
 			complaintId,
@@ -18,18 +23,42 @@ class EscalationService {
 			status: 'PENDING'
 		}
 		
-		
 		try {
 			const newEscalation = await Escalation.create(escalation);
 				
-		
 			return new Result(StatusEnum.SUCCESS, 201, newEscalation);
 		}
 		catch (error) {
 			console.error('Error creating escalation:', error);
 			const parsedError = parseSequelizeErrors(error);
 			return new Result(StatusEnum.FAIL, 400, null, parsedError);
+		}
 	}
+
+	async createEscalationWithTransaction(complaintId, reason, transaction) {
+		// Proverava da li već postoji eskalacija za ovaj complaint
+		const existingEscalation = await this.getEscalationByTicketId(complaintId);
+		if (existingEscalation.status === StatusEnum.SUCCESS) {
+			return new Result(StatusEnum.FAIL, 409, null, { message: 'Escalation already exists for this complaint' });
+		}
+		
+		const escalation = {
+			complaintId,
+			reason,
+			escalatedAt: new Date(),
+			status: 'PENDING'
+		}
+		
+		try {
+			const newEscalation = await Escalation.create(escalation, { transaction });
+				
+			return new Result(StatusEnum.SUCCESS, 201, newEscalation);
+		}
+		catch (error) {
+			console.error('Error creating escalation:', error);
+			const parsedError = parseSequelizeErrors(error);
+			return new Result(StatusEnum.FAIL, 400, null, parsedError);
+		}
 	}
 
 	async getEscalationByTicketId(complaintId) {
