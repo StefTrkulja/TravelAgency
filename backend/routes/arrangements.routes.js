@@ -1,7 +1,7 @@
-// backend/routes/arrangements.routes.js
 'use strict';
 const express = require('express');
 const router = express.Router();
+
 const { verifyToken } = require('../utils/jwtParser');
 const svc = require('../services/arrangements.service');
 
@@ -12,96 +12,135 @@ const {
   SupplierOffer
 } = require('../models');
 
-// ------------------ CRUD preko servisa 
-router.post('/', verifyToken('OPERATOR', 'ADMIN'), async (req, res) => {
-  try {
-    const a = await svc.createArrangement(req.user, req.body);
-    res.status(201).json(a);
-  } catch (e) { res.status(400).json({ error: e.message }); }
-});
+// auth & role guard
+const auth = verifyToken();
+const allowRoles = (...roles) => (req, res, next) => {
+  if (!req.user) return res.status(401).json({ message: 'Unauthorized access' });
+  if (roles.length && !roles.includes(req.user.role)) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+  next();
+};
 
-router.get('/', verifyToken('OPERATOR', 'SUPPLIER', 'MANAGER', 'ADMIN'), async (req, res) => {
-  try {
-    const list = await svc.listArrangements(req.user, req.query);
-    res.json(list);
-  } catch (e) { res.status(400).json({ error: e.message }); }
-});
+// --- AUX: ping da potvrdiš da je router baš ovaj
+router.get('/__ping', (_req, res) => res.json({ ok: true, where: 'arrangements router' }));
 
-router.put('/:id', verifyToken('OPERATOR', 'ADMIN','MANAGER'), async (req, res) => {
-  try {
-    const a = await svc.updateArrangement(req.user, +req.params.id, req.body);
-    res.json(a);
-  } catch (e) { res.status(400).json({ error: e.message }); }
-});
+// --- LIST
+router.get('/',
+  auth, allowRoles('OPERATOR','SUPPLIER','MANAGER','ADMIN','TRAVELER'),
+  async (req, res) => {
+    try {
+      const list = await svc.getAllArrangements(req.query);
+      res.json(list);
+    } catch (e) { res.status(400).json({ error: e.message }); }
+  }
+);
 
-router.delete('/:id', verifyToken('ADMIN', 'OPERATOR', 'MANAGER'), async (req, res) => {
-  try {
-    await svc.deleteArrangement(req.user, +req.params.id);
-    res.status(204).end();
-  } catch (e) { res.status(400).json({ error: e.message }); }
-});
-
-// ------------------ GET detalj: vrati destinaciju + selections + kompletne ponude
-router.get('/:id', verifyToken('OPERATOR', 'SUPPLIER', 'MANAGER', 'ADMIN'), async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    const a = await TravelArrangement.findByPk(id, {
-      include: [
-        { model: Destination, as: 'destination' },
-        { model: OfferSelection, as: 'selections', include: [{ model: SupplierOffer, as: 'offer' }] }
-      ]
-    });
-    if (!a) return res.status(404).json({ error: 'Not found' });
-    res.json(a);
-  } catch (e) { res.status(400).json({ error: e.message }); }
-});
-
-// ------------------ Select / Unselect 
-router.post('/:id/select-offer', verifyToken('OPERATOR', 'ADMIN','MANAGER'), async (req, res) => {
-  try {
-    const arrangementId = Number(req.params.id);
-    const { category, offerId } = req.body || {};
-    if (!category || !offerId) throw new Error('category and offerId required');
-
-    const a = await TravelArrangement.findByPk(arrangementId);
-    if (!a) throw new Error('Arrangement not found');
-
-    await OfferSelection.upsert({ arrangementId, category, offerId });
-
-    // ako su sve obavezne kategorije pokrivene -READY
-    const required = a.type === 'DAY_TRIP'
-      ? ['TRANSPORT', 'TOUR']
-      : ['TRANSPORT', 'ACCOMMODATION', 'TOUR'];
-
-    const all = await OfferSelection.findAll({ where: { arrangementId } });
-    const complete = required.every(c => all.find(s => s.category === c));
-
-    if (complete && (a.status === 'DRAFT' || a.status === 'CHANGES_REQUESTED')) {
-      a.status = 'READY';
-      await a.save();
+// --- CREATE
+router.post('/',
+  auth, allowRoles('OPERATOR','ADMIN','TRAVELER'),
+  async (req, res) => {
+    try {
+      const a = await svc.createArrangement(req.user, req.body);
+      res.status(201).json(a);
+    } catch (e) {
+      console.error('[ARR CREATE] error:', e);
+      res.status(400).json({ error: e.message });
     }
+  }
+);
 
-    res.json({ ok: true, status: a.status });
-  } catch (e) { res.status(400).json({ error: e.message }); }
-});
+// --- EXTRAS (MORA biti prije generičnog "/:id")
+router.get('/:id/extras',
+  auth, allowRoles('TRAVELER','OPERATOR','SUPPLIER','MANAGER','ADMIN'),
+  async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isFinite(id) || id <= 0) {
+        return res.status(400).json({ error: 'Invalid id' });
+      }
+      const rows = await svc.listExtrasForArrangement(id);
+      res.json(rows); // [] ako nema
+    } catch (e) {
+      console.error('[GET /arrangements/:id/extras] error:', e);
+      res.status(400).json({ error: e.message });
+    }
+  }
+);
 
-router.post('/:id/unselect-offer', verifyToken('OPERATOR', 'ADMIN','MANAGER'), async (req, res) => {
-  try {
-    const out = await svc.unselectOffer(req.user, +req.params.id, req.body);
-    res.json(out);
-  } catch (e) { res.status(400).json({ error: e.message }); }
-});
+// --- DETAIL
+router.get('/:id',
+  auth, allowRoles('MANAGER','ADMIN','OPERATOR','SUPPLIER','TRAVELER'),
+  async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ error: 'Invalid id' });
 
-// Batch attach 
-router.post('/:arrangementId/attach-offers', verifyToken('OPERATOR','ADMIN'), async (req,res)=>{
-  try {
-    const out = await svc.attachOffersToNewArrangement(
-      req.user,
-      Number(req.params.arrangementId),
-      req.body   // { offerIds: number[], inquiryId?: number }
-    );
-    res.json(out);
-  } catch(e){ res.status(400).json({ error: e.message }); }
-});
+      const a = await svc.getArrangement(req.user, id);
+      if (!a) return res.status(404).json({ error: 'Not found' });
+      res.json(a);
+    } catch (e) {
+      console.error('[GET /arrangements/:id] error:', e?.message || e);
+      const msg = e?.message || 'Error';
+      if (msg === 'Forbidden') return res.status(403).json({ error: msg });
+      return res.status(400).json({ error: msg });
+    }
+  }
+);
+
+// --- UPDATE / DELETE
+router.put('/:id',
+  auth, allowRoles('OPERATOR','ADMIN','MANAGER','TRAVELER'),
+  async (req, res) => {
+    try {
+      const a = await svc.updateArrangement(req.user, +req.params.id, req.body);
+      res.json(a);
+    } catch (e) { res.status(400).json({ error: e.message }); }
+  }
+);
+
+router.delete('/:id',
+  auth, allowRoles('ADMIN','OPERATOR','MANAGER','TRAVELER'),
+  async (req, res) => {
+    try {
+      await svc.deleteArrangement(req.user, +req.params.id);
+      res.status(204).end();
+    } catch (e) { res.status(400).json({ error: e.message }); }
+  }
+);
+
+// --- SELECT / UNSELECT
+router.post('/:id/select-offer',
+  auth, allowRoles('OPERATOR','ADMIN','MANAGER','TRAVELER'),
+  async (req, res) => {
+    try {
+      const out = await svc.selectOffer(req.user, +req.params.id, req.body);
+      res.json(out);
+    } catch (e) { res.status(400).json({ error: e.message }); }
+  }
+);
+
+router.post('/:id/unselect-offer',
+  auth, allowRoles('OPERATOR','ADMIN','MANAGER','TRAVELER'),
+  async (req, res) => {
+    try {
+      const out = await svc.unselectOffer(req.user, +req.params.id, req.body);
+      res.json(out);
+    } catch (e) { res.status(400).json({ error: e.message }); }
+  }
+);
+
+// --- BATCH ATTACH
+router.post('/:arrangementId/attach-offers',
+  auth, allowRoles('OPERATOR','ADMIN','TRAVELER'),
+  async (req, res) => {
+    try {
+      const out = await svc.attachOffersToNewArrangement(
+        req.user, Number(req.params.arrangementId), req.body
+      );
+      res.json(out);
+    } catch (e) { res.status(400).json({ error: e.message }); }
+  }
+);
 
 module.exports = router;

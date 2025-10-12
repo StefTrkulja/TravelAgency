@@ -8,6 +8,23 @@ const {
 
 const { Op } = Sequelize;
 
+
+const RESERVATION_SAFE_ATTRS = [
+  'id',
+  'code',                // ako je u modelu; ako nije, slobodno izbaci ovu liniju
+  'arrangementId',
+  'customerUsername',
+  'numberOfPeople',
+  'numberOfKids',
+  'totalPrice',
+  'status',
+  'specialRequests',
+  'startsAt',
+  'endsAt',
+  'createdAt',
+  'updatedAt',
+];
+
 function ensureSignedIn(user) {
   if (!user) throw new Error('Forbidden');
 }
@@ -67,7 +84,11 @@ function buildInclude(includeParam) {
     include.push({ model: User, as: 'user', attributes: ['username','name','surname','email'] });
   }
   if (inc.includes('reservation')) {
-    include.push({ model: Reservation, as: 'reservation' });
+    include.push({
+      model: Reservation,
+      as: 'reservation',
+      attributes: RESERVATION_SAFE_ATTRS,   // ⬅️ ključno
+    });
   }
   return include;
 }
@@ -260,10 +281,191 @@ async function deleteVoucher(auth, id) {
 
 
 
+
+
+
+
+
+
+// pomoćni obračun
+function applyVoucherDiscount(baseTotal, voucher) {
+  if (baseTotal == null) return null;
+  const total = Number(baseTotal);
+  const value = Number(voucher.discountValue || 0);
+
+  let discounted = total;
+  if (voucher.discountType === 'PERCENT') {
+    discounted = total - (total * (value / 100));
+  } else {
+    discounted = total - value; // AMOUNT
+  }
+  return Math.max(0, Number(discounted.toFixed(2)));
+}
+
+function todayISO() {
+  return new Date().toISOString().slice(0,10); // YYYY-MM-DD
+}
+
+/**
+ * Atomically apply voucher code to a reservation.
+ * Rules:
+ * - Voucher must exist, not used, within date window (if set)
+ * - If voucher.userUsername je postavljen, korisnik mora biti isti (owner)
+ * - Rezervacija ne smije već imati drugi isUsed voucher (1-za-1)
+ * - Ako je voucher već vezan za ISTU rezervaciju, operacija je idempotentna
+ */
+async function applyVoucherToReservation(auth, reservationId, code) {
+  if (!auth) throw new Error('Forbidden');
+
+  return await sequelize.transaction(async (tx) => {
+    const reservation = await Reservation.findByPk(reservationId, { transaction: tx });
+    if (!reservation) throw new Error('Reservation not found');
+
+    // Provjeri da li već postoji “iskorišten” voucher na ovoj rezervaciji
+    const existing = await Voucher.findOne({
+      where: { reservationId: reservation.id, isUsed: true },
+      transaction: tx
+    });
+    if (existing) {
+      // idempotentno: ako je isti kod, samo vrati izračun
+      if (existing.code === String(code).trim().toUpperCase()) {
+        const baseTotal = reservation.totalPrice ?? reservation.totalAmount ?? reservation.price ?? null;
+        return {
+          reservation,
+          voucher: existing,
+          baseTotal,
+          discountedTotal: applyVoucherDiscount(baseTotal, existing),
+          applied: false, // ništa novo nije promijenjeno
+        };
+      }
+      throw new Error('Reservation already has a used voucher');
+    }
+
+    const normalized = String(code || '').trim().toUpperCase();
+    if (!normalized) throw new Error('Voucher code required');
+
+    // Zaključaj taj voucher u transakciji (FOR UPDATE) da spriječiš trku
+    const voucher = await Voucher.findOne({
+      where: { code: normalized },
+      transaction: tx,
+      lock: tx.LOCK.UPDATE,
+    });
+    if (!voucher) throw new Error('Voucher not found');
+
+    // Ako je već iskorišten:
+    if (voucher.isUsed) {
+      // idempotentno: ako je već vezan za ovu rezervaciju, vrati OK
+      if (voucher.reservationId === reservation.id) {
+        const baseTotal = reservation.totalPrice ?? reservation.totalAmount ?? reservation.price ?? null;
+        return {
+          reservation,
+          voucher,
+          baseTotal,
+          discountedTotal: applyVoucherDiscount(baseTotal, voucher),
+          applied: false,
+        };
+      }
+      throw new Error('Voucher already used');
+    }
+
+    // Ako je voucher vezan za konkretnog korisnika – mora se poklapati
+    if (voucher.userUsername && voucher.userUsername !== auth.username) {
+      throw new Error('Voucher belongs to a different user');
+    }
+
+    // Validnost datuma (ako su postavljeni)
+    const today = todayISO();
+    if (voucher.validFrom && voucher.validFrom > today) {
+      throw new Error('Voucher is not valid yet');
+    }
+    if (voucher.validTo && voucher.validTo < today) {
+      throw new Error('Voucher is expired');
+    }
+
+    // Primjeni
+    voucher.reservationId = reservation.id;
+    voucher.isUsed = true;
+    await voucher.save({ transaction: tx });
+
+    // Izračun i povrat
+    const baseTotal = reservation.totalPrice ?? reservation.totalAmount ?? reservation.price ?? null;
+    return {
+      reservation,
+      voucher,
+      baseTotal,
+      discountedTotal: applyVoucherDiscount(baseTotal, voucher),
+      applied: true,
+    };
+  });
+}
+
+/**
+ * Ukloni voucher s rezervacije (rollback use-case).
+ * Dozvoli ADMIN/MANAGER/OPERATOR; ili vlasnika ako želiš (po želji).
+ */
+async function removeVoucherFromReservation(auth, reservationId) {
+  if (!auth) throw new Error('Forbidden');
+
+  return await sequelize.transaction(async (tx) => {
+    const reservation = await Reservation.findByPk(reservationId, { transaction: tx });
+    if (!reservation) throw new Error('Reservation not found');
+
+    const voucher = await Voucher.findOne({
+      where: { reservationId: reservation.id, isUsed: true },
+      transaction: tx,
+      lock: tx.LOCK.UPDATE,
+    });
+    if (!voucher) return { ok: true, changed: false }; // ništa za ukloniti
+
+    // Pravila dozvola — minimalno:
+    if (!['ADMIN','MANAGER','OPERATOR'].includes(auth.role)) {
+      // ako želiš vlasniku dozvoliti: provjeri userUsername === auth.username
+      if (!(voucher.userUsername && voucher.userUsername === auth.username)) {
+        throw new Error('Forbidden');
+      }
+    }
+
+    voucher.isUsed = false;
+    voucher.reservationId = null;
+    await voucher.save({ transaction: tx });
+
+    const baseTotal = reservation.totalPrice ?? reservation.totalAmount ?? reservation.price ?? null;
+
+    return {
+      ok: true,
+      changed: true,
+      reservation,
+      voucher,
+      baseTotal,
+      discountedTotal: baseTotal, // vraća se na punu cijenu
+    };
+  });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 module.exports = {
   createVoucher,
   listVouchers,
   getVoucher,
   updateVoucher,
   deleteVoucher,
+  applyVoucherToReservation,
+  removeVoucherFromReservation,
 };

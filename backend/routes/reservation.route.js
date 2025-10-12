@@ -2,34 +2,67 @@ const express = require('express');
 const router = express.Router();
 const reservationService = require('../services/reservationService');
 
-// get all reservations
+
+
+
+router.get('/code/:code', async (req, res) => {
+  const r = await reservationService.getReservationByCode(req.params.code);
+  return r.success ? res.json(r.data) : res.status(404).json({ error: r.error });
+});
+
 router.get('/', async (req, res) => {
+  const filters = {
+    customerUsername: req.query.customerUsername,
+    status: req.query.status,
+    arrangementId: req.query.arrangementId,
+    departureId: req.query.departureId,
+  };
+  const r = await reservationService.getAllReservations(filters);
+  return r.success ? res.json(r.data) : res.status(400).json({ error: r.error });
+});
+
+router.get('/:id', async (req, res) => {
+  const r = await reservationService.getReservationById(req.params.id);
+  return r.success ? res.json(r.data) : res.status(404).json({ error: r.error });
+});
+
+/* 2) POST sada prima i departureId + voucherCode */
+router.post('/', async (req, res) => {
   try {
-    const filters = {};
-    
-    if (req.query.customerUsername) {
-      filters.customerUsername = req.query.customerUsername;
+    const {
+      arrangementId,
+      customerUsername,
+      numberOfPeople,
+      numberOfKids = 0,
+      specialRequests,
+      departureId = null,
+      voucherCode = null,
+    } = req.body;
+
+    if (!arrangementId || !customerUsername || !numberOfPeople) {
+      return res.status(400).json({ error: 'Arrangement ID, customer username, and number of people are required' });
     }
-    
-    if (req.query.status) {
-      filters.status = req.query.status;
+    if (Number(numberOfPeople) < 1) {
+      return res.status(400).json({ error: 'Number of people must be at least 1' });
     }
-    
-    if (req.query.arrangementId) {
-      filters.arrangementId = req.query.arrangementId;
-    }
-    
-    const result = await reservationService.getAllReservations(filters);
-    
-    if (result.success) {
-      res.json(result.data);
-    } else {
-      res.status(400).json({ error: result.error });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+
+    const payload = {
+      arrangementId:    parseInt(arrangementId, 10),
+      customerUsername: String(customerUsername),
+      numberOfPeople:   parseInt(numberOfPeople, 10),
+      numberOfKids:     Math.max(0, parseInt(numberOfKids, 10) || 0),
+      specialRequests:  specialRequests ?? null,
+      departureId:      departureId != null ? parseInt(departureId, 10) : null,
+      voucherCode:      voucherCode ? String(voucherCode) : null,
+    };
+
+    const r = await reservationService.createReservation(payload);
+    return r.success ? res.status(201).json(r.data) : res.status(400).json({ error: r.error });
+  } catch {
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 // get reservation by id
 router.get('/:id', async (req, res) => {
@@ -76,46 +109,7 @@ router.get('/user/:username', async (req, res) => {
   }
 });
 
-// create new reservation
-router.post('/', async (req, res) => {
-  try {
-    const { 
-      arrangementId, 
-      customerUsername, 
-      numberOfPeople, 
-      specialRequests 
-    } = req.body;
-    
-    if (!arrangementId || !customerUsername || !numberOfPeople) {
-      return res.status(400).json({ 
-        error: 'Arrangement ID, customer username, and number of people are required' 
-      });
-    }
-    
-    if (numberOfPeople < 1) {
-      return res.status(400).json({ 
-        error: 'Number of people must be at least 1' 
-      });
-    }
-    
-    const reservationData = {
-      arrangementId,
-      customerUsername,
-      numberOfPeople: parseInt(numberOfPeople),
-      specialRequests
-    };
-    
-    const result = await reservationService.createReservation(reservationData);
-    
-    if (result.success) {
-      res.status(201).json(result.data);
-    } else {
-      res.status(400).json({ error: result.error });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+
 
 router.put('/:id', async (req, res) => {
   try {

@@ -14,15 +14,21 @@ const userRoute = require('./routes/userRoute');
 
 const countryRoute = require('./routes/country.routes');
 const destinationRoute = require('./routes/destinations.routes');
-const arrangementAnjaRoute = require('./routes/arrangementsAnja.routes');
 const reservationRoute = require('./routes/reservation.route');
 const voucherRoute = require('./routes/vouchers.routes');
 const reviewRoute = require('./routes/reviews.routes');
+const statistics = require('./routes/statistics.routes');
+const dynamicPricing = require('./routes/dynamicPricing.routes');
+const paymentRoutes = require('./routes/payments.routes');
+
+
+
 const sequelize = require('./models/index').sequelize;
 const { register } = require('./utils/metrics');
 const path = require('path');
 
-
+const { startDailyDynamicPricingCron } = require('./cron/dailyDynamicPricing');
+startDailyDynamicPricingCron();
 
 // require('./services/scheduler');
 // require('./services/messageService');
@@ -53,9 +59,11 @@ app.use('/api/activities', require('./routes/activities.routes'));
 app.use('/api/destinations', destinationRoute);
 app.use('/api/reservations', reservationRoute);
 app.use('/api/countries', countryRoute);
-app.use('/api/anjaArrangements', arrangementAnjaRoute);
 app.use('/api/vouchers',voucherRoute);
 app.use('/api/reviews',reviewRoute);
+app.use('/api/statistics',statistics);
+app.use('/api/dynamicPricing',dynamicPricing);
+app.use('/api', paymentRoutes);
 //app.use('/api/arrangement', require('./routes/arrangements.routes'));
 // app.use('/api/post', postRoute);
 // app.use('/api/location', locationRoute);

@@ -7,6 +7,16 @@ const offerSvc = require('../services/offerService.service');
 const { Op } = require('sequelize');
 const { Supplier, SupplierOffer, OfferInquiry } = require('../models');
 
+const auth = verifyToken();
+const allowRoles = (...roles) => (req, res, next) => {
+  if (!req.user) return res.status(401).json({ message: 'Unauthorized access' });
+  if (roles.length && !roles.includes(req.user.role)) {
+    console.log(roles);
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+  next();
+};
+
 // ------------------------------
 // OPERATOR šalje upite dobavljačima 
 router.post('/inquiries', verifyToken('OPERATOR', 'ADMIN'), async (req, res) => {
@@ -17,14 +27,14 @@ router.post('/inquiries', verifyToken('OPERATOR', 'ADMIN'), async (req, res) => 
 });
 
 // OPERATOR – lista svojih upita 
-router.get('/inquiries', verifyToken('OPERATOR','ADMIN'), async (req, res) => {
+router.get('/inquiries', verifyToken('OPERATOR','ADMIN','TRAVELER'), async (req, res) => {
   try {
     const out = await offerSvc.listInquiries(req.user, req.query);
     res.json(out);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-router.get('/inquiries/:inquiryId/offers', verifyToken('OPERATOR','ADMIN'), async (req, res) => {
+router.get('/inquiries/:inquiryId/offers', verifyToken('OPERATOR','ADMIN','TRAVELER'), async (req, res) => {
   try {
     const out = await offerSvc.listOffersForInquiry(req.user, +req.params.inquiryId);
     res.json(out);
@@ -86,7 +96,7 @@ router.post('/submit', verifyToken('SUPPLIER', 'ADMIN'), async (req, res) => {
 
 
 // SUPPLIER inbox 
-router.get('/my', verifyToken('SUPPLIER', 'ADMIN'), async (req, res) => {
+router.get('/my', verifyToken('SUPPLIER', 'ADMIN','TRAVELER'), async (req, res) => {
   try {
     const out = await offerSvc.listMyOffersAndInquiries(req.user, req.query);
     res.json(out);
@@ -94,17 +104,22 @@ router.get('/my', verifyToken('SUPPLIER', 'ADMIN'), async (req, res) => {
 });
 
 // OPERATOR/ADMIN – sve ponude za aranžman
-router.get('/for-arrangement/:arrangementId', verifyToken('OPERATOR', 'ADMIN'), async (req, res) => {
-   try {
-     const includeInquiryOffers = (req.query.scope === 'all'); // ?scope=all -> i ponude iz upita
-     const rows = await offerSvc.listOffersForArrangement(
-       req.user,
-       Number(req.params.arrangementId),
-       { includeInquiryOffers }
-     );
-     res.json(rows);
-   } catch (e) {
-     res.status(400).json({ error: e.message });
-   }
- });
+router.get(
+  '/for-arrangement/:arrangementId',
+  auth,                
+  allowRoles('OPERATOR', 'ADMIN','TRAVELER'), // ⇐ sada dozvoljava obje uloge
+  async (req, res) => {
+    try {
+      const includeInquiryOffers = (req.query.scope === 'all');
+      const rows = await offerSvc.listOffersForArrangement(
+        req.user,
+        Number(req.params.arrangementId),
+        { includeInquiryOffers }
+      );
+      res.json(rows);
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  }
+);
 module.exports = router;

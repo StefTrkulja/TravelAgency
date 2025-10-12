@@ -42,7 +42,11 @@ module.exports = (sequelize, DataTypes) => {
     transportType: { type: DataTypes.ENUM(...Object.values(TransportType)), allowNull: false },
     accommodationType: { type: DataTypes.ENUM(...Object.values(AccommodationType)), allowNull: false },
     type: { type: DataTypes.ENUM(...Object.values(ArrangementType)), allowNull: false },
-    status: { type: DataTypes.ENUM(...Object.values(ArrangementStatus)), allowNull: false, defaultValue: 'DRAFT' }
+    status: { type: DataTypes.ENUM(...Object.values(ArrangementStatus)), allowNull: false, defaultValue: 'DRAFT' },
+    dateFrom: { type: DataTypes.DATE, allowNull: false },
+    dateTo: { type: DataTypes.DATE, allowNull: false },
+    kidsDiscount: { type: DataTypes.DECIMAL, allowNull: true },
+    occupancy: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 }
   }, { 
     sequelize, 
     modelName: 'TravelArrangement',

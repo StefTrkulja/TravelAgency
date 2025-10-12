@@ -52,10 +52,32 @@
         hint="Inicijalno postavljeno na sumu ponuda — menjaj po potrebi"
         persistent-hint
       />
+      <v-text-field
+        label="Kapacitet (broj putnika)"
+        v-model.number="form.occupancy"
+        type="number"
+        min="1"
+        step="1"
+        hint="Minimalno 1. Koristi cijeli broj."
+        persistent-hint
+      />
+      <v-text-field label="Početni datum" v-model="form.dateFrom" type="date" />
+      <v-text-field label="Krajnji datum" v-model="form.dateTo" type="date" />
 
       <v-select label="Prevoz" :items="['BUS','PLANE','OWN']" v-model="form.transportType" />
       <v-select label="Smeštaj" :items="['HOTEL','APT','HOSTEL','OTHER']" v-model="form.accommodationType" />
       <v-select label="Tip aranžmana" :items="['DAY_TRIP','MULTI_DAY']" v-model="form.type" />
+
+      <!-- Kids discount (drži vidljivo ili sakrij po želji; važno je da uvijek šaljemo broj) -->
+      <v-text-field
+        label="Popust za djecu"
+        v-model.number="form.kidsDicount"
+        type="number"
+        min="0"
+        step="0.01"
+        hint="U procentima ili iznosu, zavisi od backend logike (trenutno samo čuvamo vrijednost)"
+        persistent-hint
+      />
 
       <div class="mt-3 d-flex ga-2">
         <v-btn color="primary" :disabled="!valid" :loading="creating" @click="createArrangement(false)">
@@ -76,15 +98,10 @@
       <v-alert v-if="ok" type="success" class="mt-3">{{ ok }}</v-alert>
     </v-form>
 
-    <!-- Već dodati polasci (ako se vraćaš sa Polazaka ili refresha) -->
+    <!-- Već dodati polasci -->
     <v-card v-if="createdArrangementId" class="mt-6">
       <v-card-title class="px-4 pt-4">Polasci za aranžman #{{ createdArrangementId }}</v-card-title>
-      <v-data-table
-        :headers="depHeaders"
-        :items="departures"
-        item-key="id"
-        class="px-2 pb-4"
-      >
+      <v-data-table :headers="depHeaders" :items="departures" item-key="id" class="px-2 pb-4">
         <template #item.actions="{ item }">
           <v-btn size="small" :to="`/op/itinerary/${item.id}`" prepend-icon="mdi-file-document">Itinerer</v-btn>
         </template>
@@ -128,7 +145,11 @@ const form = ref({
   basePricePerPerson: 0,
   transportType: 'BUS',
   accommodationType: 'HOTEL',
-  type: 'MULTI_DAY'
+  type: 'MULTI_DAY',
+  dateFrom: null,
+  dateTo: null,
+  kidsDicount: 0, // ⇐ VAŽNO: default 0, NOT NULL na backendu
+  occupancy: 1,
 })
 
 const depHeaders = [
@@ -142,6 +163,19 @@ const depHeaders = [
 const totalSelected = computed(() =>
   selectedOffers.value.reduce((sum, o) => sum + Number(o.priceTotal || 0), 0)
 )
+
+// --- AUTH helperi (lokalno, bez mijenjanja axiosInstance) ---
+function getCookie(name) {
+  const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)')
+  return m ? m.pop() : null
+}
+function getToken() {
+  return localStorage.getItem('token') || getCookie('token') || ''
+}
+function auth() {
+  const t = getToken()
+  return t ? { headers: { Authorization: `Bearer ${t}` }, withCredentials: true } : { withCredentials: true }
+}
 
 // helper: izaberi datume (upit > min/max iz ponuda)
 function pickStartEnd() {
@@ -186,6 +220,10 @@ function deriveFormFromOffers() {
     form.value.title = `${destName}${period}`
   }
 
+  const { start, end } = pickStartEnd()
+  if (!form.value.dateFrom && start) form.value.dateFrom = String(start).slice(0, 10) // YYYY-MM-DD
+  if (!form.value.dateTo && end)     form.value.dateTo   = String(end).slice(0, 10)
+
   const hasHotel = selectedOffers.value.some(o => o.offerType === 'HOTEL')
   const hasTransportBus = selectedOffers.value.some(o => o.offerType === 'BUS')
   const hasTransportPlane = selectedOffers.value.some(o => o.offerType === 'AIRLINE')
@@ -200,7 +238,7 @@ function deriveFormFromOffers() {
     const d1 = new Date(inquiry.value.dateFrom)
     const d2 = new Date(inquiry.value.dateTo)
     const diff = Math.round((d2 - d1)/(1000*60*60*24)) + 1
- form.value.type = (diff === 1 && !hasHotel) ? 'DAY_TRIP' : 'MULTI_DAY'
+    form.value.type = (diff === 1 && !hasHotel) ? 'DAY_TRIP' : 'MULTI_DAY'
   } else {
     form.value.type = hasHotel ? 'MULTI_DAY' : 'DAY_TRIP'
   }
@@ -210,19 +248,22 @@ function deriveFormFromOffers() {
 
 // data loads
 async function loadDestinations() {
-  try { const { data } = await api.get('/destinations'); destinations.value = data } catch {}
+  try {
+    const { data } = await api.get('/destinations', auth())
+    destinations.value = data
+  } catch {}
 }
 
 async function loadInquiryBasics() {
   if (!inquiryId.value) return
-  const { data } = await api.get('/offers/inquiries')
+  const { data } = await api.get('/offers/inquiries', auth())
   const found = (data || []).find(x => x.id === Number(inquiryId.value))
   if (found) inquiry.value = found
 }
 
 async function loadSelectedOffers() {
   if (!inquiryId.value || !selectedOfferIds.value.length) return
-  const { data } = await api.get(`/offers/inquiries/${inquiryId.value}/offers`)
+  const { data } = await api.get(`/offers/inquiries/${inquiryId.value}/offers`, auth())
   allOffersForInquiry.value = data || []
   const idset = new Set(selectedOfferIds.value)
   selectedOffers.value = allOffersForInquiry.value.filter(o => idset.has(o.id))
@@ -230,7 +271,7 @@ async function loadSelectedOffers() {
 
 async function loadDepartures() {
   if (!createdArrangementId.value) return
-  const { data } = await api.get(`/departures/by-arrangement/${createdArrangementId.value}`)
+  const { data } = await api.get(`/departures/by-arrangement/${createdArrangementId.value}`, auth())
   departures.value = data || []
 }
 
@@ -244,51 +285,106 @@ onMounted(async () => {
   await loadDepartures()
 })
 
-async function createArrangement (goToDepartures) {
-  err.value = ''; ok.value = ''; creating.value = true
+// Kreiranje / ažuriranje aranžmana
+async function createArrangement(goToDepartures) {
+  err.value = ''
+  ok.value = ''
+  creating.value = true
+
+  const toISO = (d) => {
+    if (!d) return null
+    const dt = typeof d === 'string' && d.length === 10 ? new Date(d + 'T00:00:00') : new Date(d)
+    return Number.isNaN(dt.getTime()) ? null : dt.toISOString()
+  }
+
+  const { start, end } = pickStartEnd()
+  const dateFromISO = toISO(form.value.dateFrom || start)
+  const dateToISO   = toISO(form.value.dateTo   || end)
+
+  const requiredMsg = (name) => `${name} je obavezno polje`
+  if (!form.value.destinationId) return (err.value = requiredMsg('Destinacija'), creating.value = false)
+  if (!form.value.title)         return (err.value = requiredMsg('Naslov'), creating.value = false)
+  if (!form.value.transportType) return (err.value = requiredMsg('Prevoz'), creating.value = false)
+  if (!form.value.accommodationType) return (err.value = requiredMsg('Smeštaj'), creating.value = false)
+  if (!form.value.type)          return (err.value = requiredMsg('Tip aranžmana'), creating.value = false)
+  if (!dateFromISO || !dateToISO) {
+    err.value = 'Moraju biti postavljeni datumi (Početni i Krajnji). Popuni polja ili odaberi ponude da ih automatski izračunamo.'
+    creating.value = false
+    return
+  }
+
+  const payload = {
+    destinationId: Number(form.value.destinationId),
+    title: (form.value.title || '').trim(),
+    summary: form.value.summary || null,
+    basePricePerPerson: Number(form.value.basePricePerPerson || 0),
+    transportType: form.value.transportType,
+    accommodationType: form.value.accommodationType,
+    type: form.value.type,
+    dateFrom: dateFromISO,
+    dateTo: dateToISO,
+    kidsDicount: Number(form.value.kidsDicount ?? 0),
+    occupancy: Math.max(1, Number(form.value.occupancy || 1)),
+  }
+
+  const afterAttach = async () => {
+    ok.value = createdArrangementId.value ? 'Aranžman ažuriran.' : 'Aranžman kreiran i ponude povezane.'
+    await loadDepartures()
+    if (goToDepartures) {
+      router.push({
+        name: 'op-departures',
+        params: { arrangementId: createdArrangementId.value },
+        query: prefillDatesQuery()
+      })
+    }
+  }
+
   try {
-    // ako već postoji (vratila si se sa polazaka), samo attach-uj ponude (ako treba) i eventualno idi na Polaske
     if (createdArrangementId.value) {
-      // attach ako iz nekog razloga nisi (obično jesi)
       if (selectedOfferIds.value.length) {
-        await api.post(`/arrangements/${createdArrangementId.value}/attach-offers`, {
-          offerIds: selectedOfferIds.value,
-          inquiryId: inquiryId.value
-        })
+        await api.post(
+          `/arrangements/${createdArrangementId.value}/attach-offers`,
+          { offerIds: selectedOfferIds.value, inquiryId: inquiryId.value || undefined },
+          auth()
+        )
       }
-      ok.value = 'Aranžman ažuriran.'
-      if (goToDepartures) {
-        router.push({ name:'op-departures', params:{ arrangementId: createdArrangementId.value }, query: prefillDatesQuery() })
-      } else {
-        await loadDepartures()
-      }
+      await afterAttach()
       return
     }
 
-    // 1) kreiraj aranžman
-    const { data } = await api.post('/arrangements', form.value)
-    createdArrangementId.value = data.id
+    const res = await api.post('/arrangements', payload, auth())
+    const created = res?.data || res
+    createdArrangementId.value = created.id
 
-    // 2) attach izabrane ponude
     if (selectedOfferIds.value.length) {
-      await api.post(`/arrangements/${createdArrangementId.value}/attach-offers`, {
-        offerIds: selectedOfferIds.value,
-        inquiryId: inquiryId.value
-      })
+      await api.post(
+        `/arrangements/${createdArrangementId.value}/attach-offers`,
+        { offerIds: selectedOfferIds.value, inquiryId: inquiryId.value || undefined },
+        auth()
+      )
     }
 
-    ok.value = 'Aranžman kreiran i ponude povezane.'
-    await loadDepartures()
-
-    // 3) odmah na polaske?
-    if (goToDepartures) {
-      router.push({ name:'op-departures', params:{ arrangementId: createdArrangementId.value }, query: prefillDatesQuery() })
-    }
+    await afterAttach()
   } catch (e) {
     const d = e?.response?.data
-    err.value = d?.error || d?.errors?.[0]?.message || 'Greška'
+    const msg =
+      d?.error ||
+      d?.message ||
+      d?.errors?.[0]?.message ||
+      (typeof d === 'string' ? d : '') ||
+      e?.message ||
+      'Greška prilikom kreiranja aranžmana.'
+    err.value = msg
   } finally {
     creating.value = false
   }
+}
+
+// (nije obavezno, ostavljeno ako ti zatreba drugdje)
+function asISODate(d) {
+  if (!d) return null
+  const dt = new Date(d)
+  if (Number.isNaN(dt.getTime())) return d
+  return dt.toISOString()
 }
 </script>

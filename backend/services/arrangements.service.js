@@ -20,6 +20,25 @@ const {
 
 const { Op } = require('sequelize');
 
+// ---------- Helpers (koercija i fallbackovi) ----------
+function toDecimal(v, fallback = 0) {
+  if (v === '' || v === null || v === undefined) return fallback;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function toInt(v, fallback = 0) {
+  if (v === '' || v === null || v === undefined) return fallback;
+  const n = Number(v);
+  return Number.isInteger(n) ? n : Math.round(Number(n) || fallback);
+}
+
+
+function pickEnum(v, allowed = [], fallback) {
+  const s = v != null ? String(v) : '';
+  return allowed.includes(s) ? s : fallback;
+}
+
 const Allowed = {
   DRAFT: ['QUOTING', 'READY'],
   QUOTING: ['READY'],
@@ -34,6 +53,20 @@ function assertTransition(from, to) {
   if (!Allowed[from]?.includes(to)) {
     throw new Error(`Transition ${from}→${to} not allowed`);
   }
+}
+
+function toLocalDayStart(val) {
+  if (!val) return null;
+  const d = new Date(val);
+  if (Number.isNaN(d.getTime())) return null;
+  // lokalna ponoć (ne UTC) – izbjegava “oduzima dan”
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+}
+function toLocalDayEnd(val) {
+  if (!val) return null;
+  const d = new Date(val);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
 }
 
 // -------------------- Kategorije i tipovi ponuda --------------------
@@ -104,24 +137,59 @@ function ensureOperatorOrAdminOnArrangement(user, arrangement) {
   }
 }
 
+// ---------- CREATE (liberalno, bez Missing-validacija, sa defaultovima) ----------
 async function createArrangement(user, payload) {
-  if (![ 'ADMIN'].includes(user.role)) throw new Error('Forbidden');
+  // Ako želiš tvrdu kontrolu uloge, odkomentariši naredni red:
+  // if (!['ADMIN','OPERATOR'].includes(user.role)) throw new Error('Forbidden');
 
-  const required = ['destinationId', 'title', 'basePricePerPerson', 'transportType', 'accommodationType', 'type'];
-  required.forEach(k => { if (payload[k] === undefined || payload[k] === null || payload[k] === '') throw new Error(`Missing ${k}`); });
+  // destinationId: ako ne dođe, pokušaj uzeti neku destinaciju ili fallback na 1
+  let destinationId = Number(payload?.destinationId);
+  if (!Number.isFinite(destinationId)) {
+    const anyDest = await Destination.findOne({ attributes: ['id'] });
+    destinationId = anyDest?.id ?? 1;
+  }
 
-  const dest = await Destination.findByPk(payload.destinationId);
-  if (!dest) throw new Error('Destination not found');
+  const title   = (payload?.title ?? 'Novi aranžman').toString();
+  const summary = payload?.summary ?? null;
+
+  const basePricePerPerson = toDecimal(payload?.basePricePerPerson, 0);
+
+  const transportType = pickEnum(payload?.transportType, ['BUS','PLANE','OWN'], 'OWN');
+  const accommodationType = pickEnum(payload?.accommodationType, ['HOTEL','APT','HOSTEL','OTHER'], 'OTHER');
+  const type = pickEnum(payload?.type, ['DAY_TRIP','MULTI_DAY'], 'MULTI_DAY');
+
+  // Datumi: ako ne dođu, stavi danas i +1 dan
+  const now = new Date();
+  const tomorrow = new Date(now.getTime() + 24*60*60*1000);
+  const dateFrom = payload?.dateFrom ? new Date(payload.dateFrom) : now;
+  const dateTo   = payload?.dateTo   ? new Date(payload.dateTo)   : tomorrow;
+
+  // kidsDicount – prihvati oba naziva i uvijek pošalji broj (0 default)
+  const kidsDiscountRaw = payload?.kidsDiscount ?? payload?.kidsDicount ?? payload?.kids_discount;
+
+  const kidsDiscount = toDecimal(kidsDiscountRaw, 0);
+  // DEBUG
+  console.log('[ARR CREATE] payload:', {
+    destinationId, title, basePricePerPerson, transportType, accommodationType, type,
+    dateFrom, dateTo,
+    kidsDiscount_in: payload?.kidsDiscount,
+    computed_kidsDiscount: kidsDiscount
+  });
+  const occupancy = toInt(payload?.occupancy, 1);
 
   const a = await TravelArrangement.create({
-    destinationId: payload.destinationId,
-    createdByUsername: user.username,
-    title: payload.title,
-    summary: payload.summary || null,
-    basePricePerPerson: payload.basePricePerPerson,
-    transportType: payload.transportType,       
-    accommodationType: payload.accommodationType,
-    type: payload.type                            
+    destinationId,
+    createdByUsername: user?.username ?? 'system',
+    title,
+    summary,
+    basePricePerPerson,
+    transportType,
+    accommodationType,
+    type,
+    dateFrom,
+    dateTo,
+    kidsDiscount,
+    occupancy
   });
 
   await ArrangementVersion.create({
@@ -133,24 +201,98 @@ async function createArrangement(user, payload) {
   return a;
 }
 
-async function listArrangements(user, query = {}) {
-  const where = {};
-  const include = [{ model: Destination, as: 'destination' }];
+async function  getAllArrangements(query = {}) {
+  // Destrukturiranje i normalizacija ulaza
+  const {
+    destinationId,
+    countryId,
+    transportType,
+    accommodationType,
+    type,
+    dateFrom,
+    dateTo,
+    priceFrom: priceFromRaw,
+    priceTo:   priceToRaw,
+    priceMax:  priceMaxRaw,
+    sortBy,
+    sortDir,
+    travelers      
+  } = query;
 
-  if (user.role === 'OPERATOR') {
-    where.createdByUsername = user.username;
-  } else if (user.role === 'SUPPLIER') {
-    const sup = await Supplier.findOne({ where: { accountUsername: user.username } });
-    if (!sup) return [];
-    include.push({
-      model: SupplierOffer,
-      as: 'offers',
-      where: { supplierId: sup.id },
-      required: true
-    });
+   // ✅ ako dođe priceMax, tretiraj ga kao priceTo
+  const priceFrom = priceFromRaw;
+  const priceTo   = (priceToRaw ?? priceMaxRaw);
+
+  // ✅ parsiranje cijena u brojeve
+  const priceFromNum = (priceFrom !== undefined && priceFrom !== null) ? Number(priceFrom) : null;
+  const priceToNum   = (priceTo   !== undefined && priceTo   !== null) ? Number(priceTo)   : null;
+
+
+  const dateFromVal = toLocalDayStart(dateFrom);
+  const dateToVal   = toLocalDayEnd(dateTo);
+  // WHERE za glavnu tabelu
+  const whereClause = {};
+
+  if (transportType)     whereClause.transportType     = transportType;
+  if (accommodationType) whereClause.accommodationType = accommodationType;
+  if (type)              whereClause.type              = type;
+
+
+  const minPeople = Number(travelers);
+  if (Number.isFinite(minPeople) && minPeople > 0) {
+    whereClause.occupancy = { [Op.gte]: minPeople };
   }
 
-  return await TravelArrangement.findAll({ where, include, order: [['createdAt', 'DESC']] });
+  // Opseg datuma: polje u bazi je dateFrom, treba da bude u [dateFromVal, dateToVal]
+  if (dateFromVal || dateToVal) {
+    whereClause[Op.and] = whereClause[Op.and] || [];
+    if (dateToVal)   whereClause[Op.and].push({ dateFrom: { [Op.lte]: dateToVal } });
+    if (dateFromVal) whereClause[Op.and].push({ dateTo:   { [Op.gte]: dateFromVal } });
+  }
+
+  // Opseg cijene: basePricePerPerson ∈ [priceFromNum, priceToNum]
+  if (Number.isFinite(priceFromNum) || Number.isFinite(priceToNum)) {
+    whereClause.basePricePerPerson = {};
+    if (Number.isFinite(priceFromNum)) whereClause.basePricePerPerson[Op.gte] = priceFromNum;
+    if (Number.isFinite(priceToNum))   whereClause.basePricePerPerson[Op.lte] = priceToNum;
+  }
+
+  // INCLUDE za destination (+ country) sa opcionalnim filterima i INNER JOIN-om kada filtriraš
+  const destinationInclude = {
+    association: 'destination',
+    attributes: ['id', 'name'],
+    required: !!destinationId || !!countryId, // INNER JOIN ako filtriramo
+    ...(destinationId ? { where: { id: destinationId } } : {}),
+    include: [
+      {
+        association: 'country',
+        attributes: ['id', 'name'],
+        required: !!countryId, // INNER JOIN ako filtriramo po country
+        ...(countryId ? { where: { id: countryId } } : {}),
+      },
+    ],
+  };
+  // SORT mapa i default
+  const sortMap = {
+    createdAt: ['createdAt'],
+    dateFrom:  ['dateFrom'],
+    price:     ['basePricePerPerson']
+  };
+  const sortKey = sortMap[sortBy] ? sortBy : 'createdAt';
+  const direction = (String(sortDir || 'DESC').toUpperCase() === 'ASC') ? 'ASC' : 'DESC';
+  const order = [[sortMap[sortKey][0], direction]];
+
+  try {
+    const arrangements = await TravelArrangement.findAll({
+      where: whereClause,
+      include: [destinationInclude],
+      order,
+    });
+
+    return { success: true, data: arrangements };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 }
 
 async function getArrangement(user, id) {
@@ -165,21 +307,25 @@ async function getArrangement(user, id) {
       {
         model: Departure,
         as: 'departures',
-        include: [{ model: Itinerary, as: 'Itineraries', include: [{ model: ItineraryActivity, as: 'ItineraryActivities' }] }]
+        include: [
+          {
+            model: Itinerary,
+            as: 'itinerary',       // ← matchuje Departure.hasMany(Itinerary, as: 'itineraries')
+            include: [
+              {
+                model: ItineraryActivity,
+                as: 'activities'     // ← matchuje Itinerary.hasMany(ItineraryActivity, as: 'activities')
+              }
+            ]
+          }
+        ]
       },
       { model: ArrangementVersion, as: 'versions' },
       { model: ApprovalRequest, as: 'approvals' }
     ]
   });
-  if (!a) return null;
 
-  if (user.role === 'OPERATOR' && a.createdByUsername !== user.username) throw new Error('Forbidden');
-  if (user.role === 'SUPPLIER') {
-    const sup = await Supplier.findOne({ where: { accountUsername: user.username } });
-    if (!sup) throw new Error('Forbidden');
-    const count = await SupplierOffer.count({ where: { arrangementId: a.id, supplierId: sup.id } });
-    if (!count) throw new Error('Forbidden');
-  }
+  if (!a) return null;
   return a;
 }
 
@@ -188,14 +334,32 @@ async function updateArrangement(user, id, payload) {
     const a = await TravelArrangement.findByPk(id, { transaction: tx });
     if (!a) throw new Error('Not found');
 
-    ensureOperatorOrAdminOnArrangement(user, a);
-
+    // Ako želiš dozvoliti edit bez obzira na status, komentariši sljedeći blok:
     if (!['DRAFT', 'READY', 'CHANGES_REQUESTED'].includes(a.status)) {
       throw new Error(`Cannot edit arrangement in status ${a.status}`);
     }
 
-    const fields = ['title', 'summary', 'basePricePerPerson', 'transportType', 'accommodationType', 'type'];
-    fields.forEach(f => { if (payload[f] !== undefined) a[f] = payload[f]; });
+    ensureOperatorOrAdminOnArrangement(user, a);
+
+    // koercija i fallbackovi
+    const numeric = ['basePricePerPerson', 'occupancy'];
+    const textual = ['title', 'summary', 'transportType', 'accommodationType', 'type'];
+
+    textual.forEach(f => {
+      if (payload[f] !== undefined && payload[f] !== null) a[f] = String(payload[f]);
+    });
+    numeric.forEach(f => {
+      if (payload[f] !== undefined && payload[f] !== null) a[f] = toDecimal(payload[f], a[f] ?? 0);
+    });
+
+    if (payload.dateFrom !== undefined) a.dateFrom = payload.dateFrom ? new Date(payload.dateFrom) : a.dateFrom;
+    if (payload.dateTo   !== undefined) a.dateTo   = payload.dateTo   ? new Date(payload.dateTo)   : a.dateTo;
+
+    // kidsDicount pod dva naziva
+    if (payload.kidsDiscount !== undefined || payload.kidsDicount !== undefined) {
+      a.kidsDiscount = toDecimal(payload.kidsDiscount ?? payload.kidsDicount, a.kidsDiscount ?? 0);
+    }
+
     await a.save({ transaction: tx });
 
     const lastVersion = await ArrangementVersion.max('versionNo', { where: { arrangementId: a.id }, transaction: tx }) || 1;
@@ -208,15 +372,16 @@ async function updateArrangement(user, id, payload) {
     return a;
   });
 }
+
 async function deleteArrangement(user, id) {
   return await sequelize.transaction(async (tx) => {
     const a = await TravelArrangement.findByPk(id, { transaction: tx });
     if (!a) throw new Error('Not found');
 
     // ADMIN može sve; OPERATOR – samo svoje (bez obzira na status)
-   // if (user.role !== 'ADMIN') {
-     // ensureOperatorOrAdminOnArrangement(user, a); // baca 'Forbidden' ako nije vlasnik
-    //}
+    // if (user.role !== 'ADMIN') {
+    //   ensureOperatorOrAdminOnArrangement(user, a);
+    // }
 
     // Clean child data (kao i do sada)
     await OfferSelection.destroy({ where: { arrangementId: id }, transaction: tx });
@@ -280,7 +445,6 @@ async function selectOffer(user, arrangementId, body) {
   });
 }
 
-
 async function unselectOffer(user, arrangementId, body) {
   return await sequelize.transaction(async (tx) => {
     const a = await TravelArrangement.findByPk(arrangementId, { transaction: tx });
@@ -299,7 +463,6 @@ async function unselectOffer(user, arrangementId, body) {
 }
 
 // -------------------- Povezivanje ponuda uz aranžman --------------------
-
 async function attachOfferToArrangement(user, arrangementId, body = {}) {
   const { offerId, inquiryId } = body;
   if (!offerId) throw new Error('offerId required');
@@ -380,9 +543,47 @@ async function attachOffersToNewArrangement(user, arrangementId, body = {}) {
 
 
 
+// --- EXTRAS (itinerary activities sa dodatnim troškovima) ---
+async function listExtrasForArrangement(arrangementId) {
+  const deps = await Departure.findAll({
+    where: { arrangementId },
+    attributes: ['id'],
+  });
+  const depIds = deps.map(d => d.id);
+  if (!depIds.length) return [];
+
+  const its = await Itinerary.findAll({
+    where: { departureId: { [Op.in]: depIds } },
+    attributes: ['id'],
+  });
+  const itIds = its.map(i => i.id);
+  if (!itIds.length) return [];
+
+  const acts = await ItineraryActivity.findAll({
+    where: {
+      itineraryId: { [Op.in]: itIds },
+      extraCost: { [Op.gt]: 0 }      // tvoje polje
+    },
+    attributes: ['id', 'activityTitle', 'activityDescription', 'extraCost'],
+    order: [['id','ASC']],
+  });
+
+  return acts.map(a => ({
+    id: a.id,
+    title: a.activityTitle || 'Dodatna usluga',
+    description: a.activityDescription || '',
+    extraCost: Number(a.extraCost || 0),
+    // Pretpostavka: cijena je per-person; ako ikad dodaš "perBooking", lako ćemo proširiti.
+    perPerson: true
+  }));
+}
+
+
+
+
 module.exports = {
   createArrangement,
-  listArrangements,
+  getAllArrangements,
   getArrangement,
   updateArrangement,
   deleteArrangement,
@@ -390,4 +591,5 @@ module.exports = {
   unselectOffer,
   assertTransition,
   attachOffersToNewArrangement,
+  listExtrasForArrangement
 };

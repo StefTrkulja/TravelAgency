@@ -7,7 +7,8 @@
     <v-alert v-if="err" type="error" class="mb-3">{{ err }}</v-alert>
     <v-alert v-if="ok" type="success" class="mb-3">{{ ok }}</v-alert>
 
-    <v-data-table :headers="headers" :items="items" :loading="loading" item-key="id">
+    <!-- uklonjeno :loading -->
+    <v-data-table :headers="headers" :items="items" item-key="id">
       <template #item.status="{ item }">
         <v-chip :color="statusColor(item.status)" variant="flat" size="small">
           {{ item.status }}
@@ -23,7 +24,6 @@
           Otvori
         </v-btn>
 
-        <!-- Pošalji na odobrenje (READY) -->
         <v-btn
           v-if="item.status==='READY'"
           size="x-small"
@@ -35,7 +35,6 @@
           Pošalji na odobrenje
         </v-btn>
 
-        <!-- Ugasi (ACTIVE -> INACTIVE) -->
         <v-btn
           v-if="item.status==='ACTIVE'"
           size="x-small"
@@ -47,7 +46,6 @@
           Ugasi
         </v-btn>
 
-        <!-- Obriši (DRAFT) -->
         <v-btn
           v-if="item.status==='DRAFT'"
           size="x-small"
@@ -83,22 +81,19 @@ const headers = [
 ]
 
 const items = ref([])
-const loading = ref(false)
 const busyId = ref(null)
 const err = ref('')
 const ok = ref('')
 
 const load = async () => {
   err.value = ''; ok.value = ''
-  loading.value = true
   try {
     const { data } = await axios.get('/arrangements')
-    items.value = data
+    // ako API vraća { success, data }, prilagodi:
+    items.value = Array.isArray(data) ? data : (data?.data || [])
   } catch (e) {
     const d = e?.response?.data
     err.value = d?.error || d?.errors?.[0]?.message || 'Greška pri učitavanju'
-  } finally {
-    loading.value = false
   }
 }
 
@@ -135,7 +130,6 @@ async function deactivate(item) {
   if (!confirm(`Ugasiti aranžman #${item.id}? Biće prebačen u INACTIVE.`)) return
   try {
     busyId.value = item.id
-    // očekuje se backend ruta koja menja status u INACTIVE
     await axios.post(`/arrangements/${item.id}/deactivate`)
     ok.value = `Aranžman #${item.id} je ugašen.`
     await load()

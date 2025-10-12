@@ -5,6 +5,7 @@ const {
   sequelize,
   Supplier,
   Destination,
+  TravelArrangement,
   OfferInquiry,
   OfferInquiryRecipient,
   SupplierOffer,
@@ -172,15 +173,22 @@ async function supplierSubmitOffer(user, body = {}) {
  * Kompatibilno: OPERATOR/ADMIN – sve ponude za konkretan aranžman (ako taj koncept i dalje postoji)
  */
 // Vraća ponude VEĆ VEZANE uz aranžman + (opciono) i ponude pristigle na upite za taj aranžman.
+
+
 async function listOffersForArrangement(user, arrangementId, { includeInquiryOffers = false } = {}) {
+  // 0) provjera aranžmana
   const a = await TravelArrangement.findByPk(arrangementId);
   if (!a) throw new Error('Arrangement not found');
 
-  // dozvole
-  if (user.role !== 'ADMIN' && user.role !== 'OPERATOR') throw new Error('Forbidden');
-  if (user.role === 'OPERATOR' && a.createdByUsername !== user.username) throw new Error('Forbidden');
+  // 1) dozvole
+  if (user.role !== 'ADMIN' && user.role !== 'OPERATOR') {
+    throw new Error('Forbidden');
+  }
+  if (user.role === 'OPERATOR' && a.createdByUsername !== user.username) {
+    throw new Error('Forbidden');
+  }
 
-  // 1) već vezane uz aranžman
+  // 2) već ATTACH-ovane na aranžman
   const attached = await SupplierOffer.findAll({
     where: { arrangementId },
     include: [{ model: OfferInquiry, as: 'inquiry' }],
@@ -189,18 +197,39 @@ async function listOffersForArrangement(user, arrangementId, { includeInquiryOff
 
   if (!includeInquiryOffers) return attached;
 
-  // 2) ponude iz upita za ovaj aranžman (arrangementId u tabeli upita)
-  const fromInquiries = await SupplierOffer.findAll({
-    where: { arrangementId: null },
-    include: [{ model: OfferInquiry, as: 'inquiry', where: { arrangementId } }],
-    order: [['createdAt', 'DESC']]
+  // 3) Ponude iz POVEZANIH upita po heuristici:
+  //    - isti destination kao aranžman
+  //    - period upita se preklapa sa periodom aranžmana
+  const inquiries = await OfferInquiry.findAll({
+    where: {
+      destinationId: a.destinationId,
+      // overlap: (inq.dateFrom <= a.dateTo) AND (inq.dateTo >= a.dateFrom)
+      dateFrom: { [Op.lte]: a.dateTo },
+      dateTo:   { [Op.gte]: a.dateFrom }
+    },
+    attributes: ['id']
   });
+  const inquiryIds = inquiries.map(i => i.id);
 
-  // merge bez duplikata
+  let fromInquiries = [];
+  if (inquiryIds.length) {
+    fromInquiries = await SupplierOffer.findAll({
+      where: {
+        arrangementId: null,
+        inquiryId: { [Op.in]: inquiryIds }
+      },
+      include: [{ model: OfferInquiry, as: 'inquiry' }],
+      order: [['createdAt', 'DESC']]
+    });
+  }
+
+  // 4) merge bez duplikata
   const map = new Map();
   [...attached, ...fromInquiries].forEach(o => map.set(o.id, o));
   return Array.from(map.values());
 }
+
+
 
 /**
  * OPERATOR/ADMIN – lista upita (za OPERATORA samo njegovi)

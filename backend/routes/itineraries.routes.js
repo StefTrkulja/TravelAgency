@@ -18,7 +18,7 @@ router.post('/:departureId',
 
 
 router.get('/by-departure/:departureId',
-  verifyToken('OPERATOR', 'SUPPLIER', 'MANAGER', 'ADMIN'),
+  verifyToken('OPERATOR', 'SUPPLIER', 'MANAGER', 'ADMIN','TRAVELER'),
   async (req, res) => {
     const r = await svc.list(+req.params.departureId);
     res.status(r.code).json(r.status === StatusEnum.FAIL ? { errors: r.errors } : r.data);
@@ -27,7 +27,7 @@ router.get('/by-departure/:departureId',
 
 
 router.get('/:id',
-  verifyToken('OPERATOR', 'SUPPLIER', 'MANAGER', 'ADMIN'),
+  verifyToken('OPERATOR', 'SUPPLIER', 'MANAGER', 'ADMIN','TRAVELER'),
   async (req, res) => {
     const r = await svc.get(+req.params.id);
     res.status(r.code).json(r.status === StatusEnum.FAIL ? { errors: r.errors } : r.data);
