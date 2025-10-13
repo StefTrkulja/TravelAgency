@@ -367,6 +367,34 @@ class AnalyticsService {
       }
     };
   }
+
+  // Operator Performance Report (PL/pgSQL function)
+  async getOperatorPerformanceReport(options = {}) {
+    try {
+      const { startDate, endDate } = options;
+      
+      // Default to last 30 days if not provided
+      const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const end = endDate ? new Date(endDate) : new Date();
+
+      // Call PL/pgSQL function - FIX: Sequelize query needs to return array correctly
+      const results = await sequelize.query(`
+        SELECT * FROM generate_operator_performance_report(
+          $1::TIMESTAMP,
+          $2::TIMESTAMP
+        )
+        ORDER BY performance_score DESC;
+      `, {
+        bind: [start, end],
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      return new Result(StatusEnum.OK, 200, results || []);
+    } catch (err) {
+      console.error('Error in getOperatorPerformanceReport:', err);
+      return new Result(StatusEnum.FAIL, 500, null, [{ message: err.message }]);
+    }
+  }
 }
 
 module.exports = new AnalyticsService();

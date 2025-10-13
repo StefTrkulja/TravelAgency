@@ -18,7 +18,17 @@
           prepend-icon="mdi-file-pdf-box"
           :loading="generatingPDF"
         >
-          Export PDF
+          Export Dashboard PDF
+        </v-btn>
+        <v-btn
+          variant="elevated"
+          color="primary"
+          class="pdf-btn mr-3"
+          @click="generateOperatorReportPDF"
+          prepend-icon="mdi-account-group"
+          :loading="generatingOperatorPDF"
+        >
+          Operator Performance Report
         </v-btn>
         <v-select
           v-model="selectedTimeRange"
@@ -363,6 +373,7 @@ const router = useRouter()
 // Reactive data
 const loading = ref(true)
 const generatingPDF = ref(false)
+const generatingOperatorPDF = ref(false)
 const selectedTimeRange = ref('30d')
 
 const slaTargets = ref({ percentage: 0, total: 0, achieved: 0 })
@@ -828,6 +839,266 @@ async function generatePDF() {
     console.error('Error generating PDF:', error)
   } finally {
     generatingPDF.value = false
+  }
+}
+
+async function generateOperatorReportPDF() {
+  generatingOperatorPDF.value = true
+  try {
+    // Calculate date range based on selectedTimeRange
+    const endDate = new Date()
+    let startDate = new Date()
+    
+    switch (selectedTimeRange.value) {
+      case '7d':
+        startDate.setDate(startDate.getDate() - 7)
+        break
+      case '30d':
+        startDate.setDate(startDate.getDate() - 30)
+        break
+      case '90d':
+        startDate.setDate(startDate.getDate() - 90)
+        break
+      default:
+        startDate.setDate(startDate.getDate() - 30)
+    }
+
+    // Fetch operator performance data from backend
+    const response = await axiosInstance.get('/analytics/operator-performance-report', {
+      params: {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString()
+      }
+    })
+
+    const operators = response.data
+
+    // Generate PDF
+    const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+    
+    // Warm background
+    doc.setFillColor(254, 243, 226)
+    doc.rect(0, 0, pageWidth, pageHeight, 'F')
+    
+    // Header
+    doc.setFillColor(212, 115, 10)
+    doc.rect(0, 0, pageWidth, 30, 'F')
+    
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(20)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Operator Performance Report', 15, 18)
+    
+    const currentDate = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', month: 'short', day: 'numeric' 
+    })
+    doc.setFontSize(9)
+    doc.text(`Generated: ${currentDate}`, pageWidth - 55, 12)
+    doc.text(`Period: ${selectedTimeRange.value}`, pageWidth - 55, 18)
+    doc.text(`Operators: ${operators.length}`, pageWidth - 55, 24)
+    
+    let yPosition = 40
+    doc.setTextColor(31, 41, 55)
+    
+    // Summary Section
+    if (operators.length > 0) {
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(212, 115, 10)
+      doc.text('Performance Summary', 15, yPosition)
+      
+      const totalTickets = operators.reduce((sum, op) => sum + parseInt(op.total_complaints || 0), 0)
+      const totalClosed = operators.reduce((sum, op) => sum + parseInt(op.closed_complaints || 0), 0)
+      const totalBreaches = operators.reduce((sum, op) => sum + parseInt(op.sla_breach_count || 0), 0)
+      const avgSatisfaction = (operators.reduce((sum, op) => sum + parseFloat(op.avg_satisfaction || 0), 0) / operators.length).toFixed(2)
+      
+      yPosition += 10
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(31, 41, 55)
+      doc.text(`Total Tickets: ${totalTickets}`, 15, yPosition)
+      doc.text(`Total Closed: ${totalClosed}`, 70, yPosition)
+      doc.text(`Total Breaches: ${totalBreaches}`, 125, yPosition)
+      
+      yPosition += 7
+      doc.text(`Average Satisfaction: ${avgSatisfaction}/5.00`, 15, yPosition)
+      doc.text(`Close Rate: ${((totalClosed/totalTickets)*100).toFixed(1)}%`, 70, yPosition)
+      
+      yPosition += 15
+    }
+    
+    // Table Header
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(212, 115, 10)
+    doc.text('Detailed Operator Statistics', 15, yPosition)
+    
+    yPosition += 8
+    
+    // Table column headers
+    doc.setFillColor(212, 115, 10)
+    doc.rect(15, yPosition, pageWidth - 30, 8, 'F')
+    
+    doc.setFontSize(8)
+    doc.setTextColor(255, 255, 255)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Operator', 17, yPosition + 5)
+    doc.text('Total', 80, yPosition + 5)
+    doc.text('Closed', 100, yPosition + 5)
+    doc.text('Avg Resolution', 120, yPosition + 5)
+    doc.text('Breaches', 150, yPosition + 5)
+    doc.text('Satisfaction', 170, yPosition + 5)
+    doc.text('Score', 190, yPosition + 5)
+    
+    yPosition += 10
+    
+    // Table rows
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7)
+    
+    operators.forEach((operator, index) => {
+      // Check if we need a new page
+      if (yPosition > pageHeight - 30) {
+        doc.addPage()
+        doc.setFillColor(254, 243, 226)
+        doc.rect(0, 0, pageWidth, pageHeight, 'F')
+        yPosition = 20
+        
+        // Repeat header on new page
+        doc.setFillColor(212, 115, 10)
+        doc.rect(15, yPosition, pageWidth - 30, 8, 'F')
+        doc.setFontSize(8)
+        doc.setTextColor(255, 255, 255)
+        doc.setFont('helvetica', 'bold')
+        doc.text('Operator', 17, yPosition + 5)
+        doc.text('Total', 80, yPosition + 5)
+        doc.text('Closed', 100, yPosition + 5)
+        doc.text('Avg Resolution', 120, yPosition + 5)
+        doc.text('Breaches', 150, yPosition + 5)
+        doc.text('Satisfaction', 170, yPosition + 5)
+        doc.text('Score', 190, yPosition + 5)
+        yPosition += 10
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(7)
+      }
+      
+      // Alternating row colors
+      if (index % 2 === 0) {
+        doc.setFillColor(255, 255, 255)
+        doc.rect(15, yPosition - 4, pageWidth - 30, 7, 'F')
+      } else {
+        doc.setFillColor(249, 250, 251)
+        doc.rect(15, yPosition - 4, pageWidth - 30, 7, 'F')
+      }
+      
+      doc.setTextColor(31, 41, 55)
+      
+      // Operator name (truncate if too long)
+      const operatorName = operator.operator_full_name || operator.operator_username
+      const truncatedName = operatorName.length > 20 ? operatorName.substring(0, 18) + '...' : operatorName
+      doc.text(truncatedName, 17, yPosition)
+      
+      // Statistics
+      doc.text(String(operator.total_complaints || 0), 85, yPosition)
+      doc.text(String(operator.closed_complaints || 0), 105, yPosition)
+      doc.text(`${parseFloat(operator.avg_resolution_hours || 0).toFixed(1)}h`, 128, yPosition)
+      
+      // Breaches (color coded)
+      const breaches = parseInt(operator.sla_breach_count || 0)
+      if (breaches > 0) {
+        doc.setTextColor(220, 38, 38) // red
+      } else {
+        doc.setTextColor(22, 163, 74) // green
+      }
+      doc.text(String(breaches), 158, yPosition)
+      doc.setTextColor(31, 41, 55)
+      
+      // Satisfaction rating
+      const satisfaction = parseFloat(operator.avg_satisfaction || 0).toFixed(2)
+      doc.text(satisfaction, 178, yPosition)
+      
+      // Performance score (color coded)
+      const score = parseFloat(operator.performance_score || 0).toFixed(2)
+      if (score >= 80) {
+        doc.setTextColor(22, 163, 74) // green
+      } else if (score >= 60) {
+        doc.setTextColor(245, 158, 11) // orange
+      } else {
+        doc.setTextColor(220, 38, 38) // red
+      }
+      doc.setFont('helvetica', 'bold')
+      doc.text(score, 193, yPosition)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(31, 41, 55)
+      
+      yPosition += 7
+    })
+    
+    // Legend section
+    yPosition += 10
+    if (yPosition > pageHeight - 40) {
+      doc.addPage()
+      doc.setFillColor(254, 243, 226)
+      doc.rect(0, 0, pageWidth, pageHeight, 'F')
+      yPosition = 20
+    }
+    
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(212, 115, 10)
+    doc.text('Performance Score Formula:', 15, yPosition)
+    
+    yPosition += 6
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(31, 41, 55)
+    doc.text('Score = (Close Rate * 40) + (Avg Satisfaction * 20) - (Breaches * 5)', 15, yPosition)
+    
+    yPosition += 5
+    doc.text('Excellent: >= 80 | Good: >= 60 | Needs Improvement: < 60', 15, yPosition)
+    
+    // Signature section
+    const signatureY = pageHeight - 35
+    
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(212, 115, 10)
+    doc.text('Report Authorization', 15, signatureY)
+    
+    doc.setDrawColor(107, 114, 128)
+    doc.setLineWidth(0.3)
+    doc.line(15, signatureY + 15, 80, signatureY + 15)
+    
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'italic')
+    doc.setTextColor(31, 41, 55)
+    const managerName = store.name && store.surname ? `${store.name} ${store.surname}` : store.username || 'Manager'
+    doc.text(managerName, 20, signatureY + 12)
+    
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(107, 114, 128)
+    doc.text('Manager Signature', 20, signatureY + 20)
+    doc.text(`Date: ${currentDate}`, 20, signatureY + 26)
+    
+    // Footer
+    doc.setFontSize(6)
+    doc.setFont('helvetica', 'italic')
+    doc.setTextColor(107, 114, 128)
+    doc.text('TravelAgency Operator Performance Report - Confidential', 15, pageHeight - 5)
+    doc.text(`Page ${doc.getCurrentPageInfo().pageNumber} of ${doc.internal.getNumberOfPages()}`, pageWidth - 25, pageHeight - 5)
+    
+    // Save PDF
+    const filename = `Operator_Performance_Report_${selectedTimeRange.value}_${new Date().toISOString().split('T')[0]}.pdf`
+    doc.save(filename)
+    
+  } catch (error) {
+    console.error('Error generating operator performance PDF:', error)
+    alert('Failed to generate operator performance report. Please try again.')
+  } finally {
+    generatingOperatorPDF.value = false
   }
 }
 

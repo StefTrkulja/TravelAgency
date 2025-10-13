@@ -185,4 +185,32 @@ router.get('/dashboard',
   }
 );
 
+// Get Operator Performance Report (uses PL/pgSQL function)
+router.get('/operator-performance-report',
+  jwtParser.extractTokenUser,
+  async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    
+    if (req.user.role !== 'manager') {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    try {
+      const { startDate, endDate } = req.query;
+      const result = await AnalyticsService.getOperatorPerformanceReport({ startDate, endDate });
+
+      if (result.status === StatusEnum.FAIL) {
+        return res.status(result.code).json({ errors: result.errors });
+      }
+
+      return res.status(result.code).json(result.data);
+    } catch (error) {
+      console.error('Operator Performance Report error:', error);
+      return res.status(500).json({ errors: [{ message: error.message }] });
+    }
+  }
+);
+
 module.exports = router;
